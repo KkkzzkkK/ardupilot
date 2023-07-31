@@ -31,12 +31,12 @@ class CheckAutoTestSpeedup(object):
         self.debug = debug
 
     def progress(self, message):
-        print("PROGRESS: %s" % (message,))
+        print(f"PROGRESS: {message}")
 
     def run_program(self, prefix, cmd_list):
         '''copied in from build_binaries.py'''
         '''run cmd_list, spewing and setting output in self'''
-        self.progress("Running (%s)" % " ".join(cmd_list))
+        self.progress(f'Running ({" ".join(cmd_list)})')
         p = subprocess.Popen(cmd_list,
                              stdin=None,
                              close_fds=True,
@@ -56,11 +56,10 @@ class CheckAutoTestSpeedup(object):
                 x = x.decode('utf-8')
             self.program_output += x
             x = x.rstrip()
-            print("%s: %s" % (prefix, x))
+            print(f"{prefix}: {x}")
         (_, status) = returncode
         if status != 0:
-            self.progress("Process failed (%s)" %
-                          str(returncode))
+            self.progress(f"Process failed ({str(returncode)})")
             raise subprocess.CalledProcessError(
                 returncode, cmd_list)
 

@@ -34,10 +34,7 @@ class TestVCC(Test):
         vccMaxDiff = 0.3 * 1000
         if vccDiff > vccMaxDiff:
             self.result.status = TestResult.StatusType.WARN
-            self.result.statusMessage = "VCC min/max diff %sv, should be <%sv" % (vccDiff / 1000.0, vccMaxDiff / 1000.0)
+            self.result.statusMessage = f"VCC min/max diff {vccDiff / 1000.0}v, should be <{vccMaxDiff / 1000.0}v"
         elif vccMin < vccMinThreshold:
             self.result.status = TestResult.StatusType.FAIL
-            self.result.statusMessage = "VCC below minimum of %sv (%sv)" % (
-                repr(vccMinThreshold / 1000.0),
-                repr(vccMin / 1000.0),
-            )
+            self.result.statusMessage = f"VCC below minimum of {repr(vccMinThreshold / 1000.0)}v ({repr(vccMin / 1000.0)}v)"

@@ -121,15 +121,15 @@ def get_legacy_defines(sketch_name, bld):
     # we do not need to actually split heli and copter directories
     if bld.cmd == 'heli' or 'heli' in bld.targets:
         return [
-        'APM_BUILD_DIRECTORY=APM_BUILD_Heli',
-        'SKETCH="' + sketch_name + '"',
-        'SKETCHNAME="' + sketch_name + '"',
+            'APM_BUILD_DIRECTORY=APM_BUILD_Heli',
+            f'SKETCH="{sketch_name}"',
+            f'SKETCHNAME="{sketch_name}"',
         ]
 
     return [
-        'APM_BUILD_DIRECTORY=APM_BUILD_' + sketch_name,
-        'SKETCH="' + sketch_name + '"',
-        'SKETCHNAME="' + sketch_name + '"',
+        f'APM_BUILD_DIRECTORY=APM_BUILD_{sketch_name}',
+        f'SKETCH="{sketch_name}"',
+        f'SKETCHNAME="{sketch_name}"',
     ]
 
 IGNORED_AP_LIBRARIES = [
@@ -284,17 +284,16 @@ def ap_program(bld,
     tg_constructor = bld.program
     if bld.env.AP_PROGRAM_AS_STLIB:
         tg_constructor = bld.stlib
-    else:
-        if bld.env.STATIC_LINKING:
-            kw['features'].append('static_linking')
+    elif bld.env.STATIC_LINKING:
+        kw['features'].append('static_linking')
 
 
     tg = tg_constructor(
-        target='#%s' % name,
+        target=f'#{name}',
         name=name,
         program_name=program_name,
         program_dir=program_dir,
-        **kw
+        **kw,
     )
     if 'use' in kw and bld.env.STATIC_LINKING:
         # ensure we link against vehicle library
@@ -351,7 +350,7 @@ def ap_create_program_dir(self):
 def ap_stlib_target(self):
     if self.target.startswith('#'):
         self.target = self.target[1:]
-    self.target = '#%s' % os.path.join('lib', self.target)
+    self.target = f"#{os.path.join('lib', self.target)}"
 
 @conf
 def ap_find_tests(bld, use=[]):
@@ -365,7 +364,7 @@ def ap_find_tests(bld, use=[]):
     use = Utils.to_list(use)
     use.append('GTEST')
 
-    includes = [bld.srcnode.abspath() + '/tests/']
+    includes = [f'{bld.srcnode.abspath()}/tests/']
 
     for f in bld.path.ant_glob(incl='*.cpp'):
         ap_program(
@@ -384,11 +383,11 @@ _versions = []
 
 @conf
 def ap_version_append_str(ctx, k, v):
-    ctx.env['AP_VERSION_ITEMS'] += [(k, '"{}"'.format(os.environ.get(k, v)))]
+    ctx.env['AP_VERSION_ITEMS'] += [(k, f'"{os.environ.get(k, v)}"')]
 
 @conf
 def ap_version_append_int(ctx, k, v):
-    ctx.env['AP_VERSION_ITEMS'] += [(k, '{}'.format(os.environ.get(k, v)))]
+    ctx.env['AP_VERSION_ITEMS'] += [(k, f'{os.environ.get(k, v)}')]
 
 @conf
 def write_version_header(ctx, tgt):
@@ -411,12 +410,9 @@ def ap_find_benchmarks(bld, use=[]):
     if not bld.env.HAS_GBENCHMARK:
         return
 
-    includes = [bld.srcnode.abspath() + '/benchmarks/']
+    includes = [f'{bld.srcnode.abspath()}/benchmarks/']
     to_remove = '-Werror=suggest-override'
-    if to_remove in bld.env.CXXFLAGS:
-        need_remove = True
-    else:
-        need_remove = False
+    need_remove = to_remove in bld.env.CXXFLAGS
     if need_remove:
         while to_remove in bld.env.CXXFLAGS:
             bld.env.CXXFLAGS.remove(to_remove)
@@ -444,9 +440,11 @@ def test_summary(bld):
     fails = []
 
     for filename, exit_code, out, err in bld.utest_results:
-        Logs.pprint('GREEN' if exit_code == 0 else 'YELLOW',
-                    '    %s' % filename,
-                    'returned %d' % exit_code)
+        Logs.pprint(
+            'GREEN' if exit_code == 0 else 'YELLOW',
+            f'    {filename}',
+            'returned %d' % exit_code,
+        )
 
         if exit_code != 0:
             fails.append(filename)
@@ -456,13 +454,13 @@ def test_summary(bld):
         if len(out):
             buf = BytesIO(out)
             for line in buf:
-                print("    OUT: %s" % line.decode(), end='', file=sys.stderr)
+                print(f"    OUT: {line.decode()}", end='', file=sys.stderr)
             print()
 
         if len(err):
             buf = BytesIO(err)
             for line in buf:
-                print("    ERR: %s" % line.decode(), end='', file=sys.stderr)
+                print(f"    ERR: {line.decode()}", end='', file=sys.stderr)
             print()
 
     if not fails:
@@ -473,7 +471,7 @@ def test_summary(bld):
                (len(fails), len(bld.utest_results)))
 
     for filename in fails:
-        Logs.error('    %s' % filename)
+        Logs.error(f'    {filename}')
 
     bld.fatal('check: some tests failed')
 
@@ -485,10 +483,9 @@ def _process_build_command(bld):
 
     params = _build_commands[bld.cmd]
 
-    targets = params['targets']
-    if targets:
+    if targets := params['targets']:
         if bld.targets:
-            bld.targets += ',' + targets
+            bld.targets += f',{targets}'
         else:
             bld.targets = targets
 
@@ -511,24 +508,20 @@ def build_command(name,
 def _select_programs_from_group(bld):
     groups = bld.options.program_group
     if not groups:
-        if bld.targets:
-            groups = []
-        else:
-            groups = ['bin']
-
+        groups = [] if bld.targets else ['bin']
     if 'all' in groups:
         groups = list(_grouped_programs.keys())
         groups.remove('bin')       # Remove `bin` so as not to duplicate all items in bin
 
     for group in groups:
         if group not in _grouped_programs:
-            bld.fatal('Group %s not found' % group)
+            bld.fatal(f'Group {group} not found')
 
         target_names = _grouped_programs[group].keys()
 
         for name in target_names:
             if bld.targets:
-                bld.targets += ',' + name
+                bld.targets += f',{name}'
             else:
                 bld.targets = name
 

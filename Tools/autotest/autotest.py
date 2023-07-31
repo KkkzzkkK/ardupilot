@@ -65,11 +65,7 @@ def get_default_params(atype, binary):
                             -105.22978898137808,
                             1583.702759,
                             246)
-    if "plane" in binary or "rover" in binary:
-        frame = "rover"
-    else:
-        frame = "+"
-
+    frame = "rover" if "plane" in binary or "rover" in binary else "+"
     home = "%f,%f,%u,%u" % (HOME.lat, HOME.lng, HOME.alt, HOME.heading)
     mavproxy_master = 'tcp:127.0.0.1:5760'
     sitl = util.start_SITL(binary,
@@ -91,11 +87,11 @@ def get_default_params(atype, binary):
                                             master=mavproxy_master)
         mavproxy.expect(r'Saved [0-9]+ parameters to (\S+)')
     parmfile = mavproxy.match.group(1)
-    dest = buildlogs_path('%s-defaults.parm' % atype)
+    dest = buildlogs_path(f'{atype}-defaults.parm')
     shutil.copy(parmfile, dest)
     util.pexpect_close(mavproxy)
     util.pexpect_close(sitl)
-    print("Saved defaults for %s to %s" % (atype, dest))
+    print(f"Saved defaults for {atype} to {dest}")
     return True
 
 
@@ -127,8 +123,8 @@ def build_binaries():
             "generate_manifest.py",
             "gen_stable.py",
     ]:
-        orig = util.reltopdir('Tools/scripts/%s' % thing)
-        copy = util.reltopdir('./%s' % os.path.basename(thing))
+        orig = util.reltopdir(f'Tools/scripts/{thing}')
+        copy = util.reltopdir(f'./{os.path.basename(thing)}')
         shutil.copy2(orig, copy)
 
     if util.run_cmd("./build_binaries.py", directory=util.reltopdir('.')) != 0:
@@ -140,12 +136,12 @@ def build_binaries():
 def build_examples(**kwargs):
     """Build examples."""
     for target in 'fmuv2', 'Pixhawk1', 'navio', 'linux':
-        print("Running build.examples for %s" % target)
+        print(f"Running build.examples for {target}")
         try:
             util.build_examples(target, **kwargs)
         except Exception as e:
-            print("Failed build_examples on board=%s" % target)
-            print(str(e))
+            print(f"Failed build_examples on board={target}")
+            print(e)
             return False
 
     return True
@@ -154,12 +150,12 @@ def build_examples(**kwargs):
 def build_unit_tests(**kwargs):
     """Build tests."""
     for target in ['linux', 'sitl']:
-        print("Running build.unit_tests for %s" % target)
+        print(f"Running build.unit_tests for {target}")
         try:
             util.build_tests(target, **kwargs)
         except Exception as e:
-            print("Failed build.unit_tests on board=%s" % target)
-            print(str(e))
+            print(f"Failed build.unit_tests on board={target}")
+            print(e)
             return False
 
     return True
@@ -167,7 +163,7 @@ def build_unit_tests(**kwargs):
 
 def run_unit_test(test):
     """Run unit test file."""
-    print("Running (%s)" % test)
+    print(f"Running ({test})")
     subprocess.check_call([test])
 
 
@@ -180,18 +176,18 @@ def run_unit_tests():
                                                  target,
                                                  'tests',
                                                  ))
-        tests = glob.glob("%s/*" % binary_dir)
+        tests = glob.glob(f"{binary_dir}/*")
         for test in tests:
             try:
                 run_unit_test(test)
             except subprocess.CalledProcessError:
-                print("Exception running (%s)" % test)
-                fail_list.append(target + '/' + os.path.basename(test))
+                print(f"Exception running ({test})")
+                fail_list.append(f'{target}/{os.path.basename(test)}')
                 success = False
 
     print("Failing tests:")
     for failure in fail_list:
-        print("  %s" % failure)
+        print(f"  {failure}")
     return success
 
 
@@ -236,7 +232,7 @@ def build_parameters():
     for vehicle in all_vehicles():
         if util.run_cmd([param_parse_filepath(), '--vehicle', vehicle],
                         directory=util.reltopdir('.')) != 0:
-            print("Failed param_parse.py (%s)" % vehicle)
+            print(f"Failed param_parse.py ({vehicle})")
             return False
     return True
 
@@ -251,9 +247,9 @@ def convert_gpx():
     mavlog = glob.glob(buildlogs_path("*.tlog"))
     passed = True
     for m in mavlog:
-        util.run_cmd(mavtogpx_filepath() + " --nofixcheck " + m)
-        gpx = m + '.gpx'
-        kml = m + '.kml'
+        util.run_cmd(f"{mavtogpx_filepath()} --nofixcheck {m}")
+        gpx = f'{m}.gpx'
+        kml = f'{m}.kml'
         try:
             util.run_cmd('gpsbabel -i gpx -f %s '
                          '-o kml,units=m,floating=1,extrude=1 -F %s' %
@@ -261,10 +257,10 @@ def convert_gpx():
         except subprocess.CalledProcessError:
             passed = False
         try:
-            util.run_cmd('zip %s.kmz %s.kml' % (m, m))
+            util.run_cmd(f'zip {m}.kmz {m}.kml')
         except subprocess.CalledProcessError:
             passed = False
-        util.run_cmd("mavflightview.py --imagefile=%s.png %s" % (m, m))
+        util.run_cmd(f"mavflightview.py --imagefile={m}.png {m}")
     return passed
 
 
@@ -299,10 +295,9 @@ def alarm_handler(signum, frame):
 
 def should_run_step(step):
     """See if a step should be skipped."""
-    for skip in skipsteps:
-        if fnmatch.fnmatch(step.lower(), skip.lower()):
-            return False
-    return True
+    return not any(
+        fnmatch.fnmatch(step.lower(), skip.lower()) for skip in skipsteps
+    )
 
 
 __bin_names = {
@@ -337,37 +332,34 @@ def binary_path(step, debug=False):
     except Exception:
         return None
 
-    if vehicle in __bin_names:
-        if len(__bin_names[vehicle].split(".")) == 2:
-            config_name = __bin_names[vehicle].split(".")[0]
-            binary_name = __bin_names[vehicle].split(".")[1]
-        else:
-            config_name = 'sitl'
-            binary_name = __bin_names[vehicle]
-    else:
+    if vehicle not in __bin_names:
         # cope with builds that don't have a specific binary
         return None
 
+    if len(__bin_names[vehicle].split(".")) == 2:
+        config_name = __bin_names[vehicle].split(".")[0]
+        binary_name = __bin_names[vehicle].split(".")[1]
+    else:
+        config_name = 'sitl'
+        binary_name = __bin_names[vehicle]
     binary = util.reltopdir(os.path.join('build',
                                          config_name,
                                          'bin',
                                          binary_name))
     if not os.path.exists(binary):
-        if os.path.exists(binary + ".exe"):
+        if os.path.exists(f"{binary}.exe"):
             binary += ".exe"
         else:
-            raise ValueError("Binary (%s) does not exist" % (binary,))
+            raise ValueError(f"Binary ({binary}) does not exist")
 
     return binary
 
 
 def split_specific_test_step(step):
     """Extract test from argument."""
-    print('step=%s' % str(step))
+    print(f'step={str(step)}')
     m = re.match("((fly|drive|dive|test)[.][^.]+)[.](.*)", step)
-    if m is None:
-        return None
-    return ((m.group(1), m.group(3)))
+    return None if m is None else (m[1], m[3])
 
 
 def find_specific_test_to_run(step):
@@ -376,7 +368,7 @@ def find_specific_test_to_run(step):
     if t is None:
         return None
     (testname, test) = t
-    return "%s.%s" % (testname, test)
+    return f"{testname}.{test}"
 
 
 tester_class_map = {
@@ -419,10 +411,10 @@ def run_specific_test(step, *args, **kwargs):
     for a in tester.tests():
         if type(a) != Test:
             a = Test(a)
-        print("Got %s" % (a.name))
+        print(f"Got {a.name}")
         if a.name == test:
             return (tester.autotest(tests=[a], allow_skips=False), tester)
-    print("Failed to find test %s on %s" % (test, testname))
+    print(f"Failed to find test {test} on {testname}")
     sys.exit(1)
 
 
@@ -457,29 +449,29 @@ def run_step(step):
     build_opts = build_opts
 
     vehicle_binary = None
-    if step == 'build.Plane':
-        vehicle_binary = 'bin/arduplane'
-
-    if step == 'build.Rover':
-        vehicle_binary = 'bin/ardurover'
-
-    if step == 'build.Copter':
-        vehicle_binary = 'bin/arducopter'
-
     if step == 'build.Blimp':
         vehicle_binary = 'bin/blimp'
 
-    if step == 'build.Tracker':
-        vehicle_binary = 'bin/antennatracker'
+    elif step == 'build.Copter':
+        vehicle_binary = 'bin/arducopter'
 
-    if step == 'build.Helicopter':
+    elif step == 'build.Helicopter':
         vehicle_binary = 'bin/arducopter-heli'
 
-    if step == 'build.Sub':
+    elif step == 'build.Plane':
+        vehicle_binary = 'bin/arduplane'
+
+    elif step == 'build.Rover':
+        vehicle_binary = 'bin/ardurover'
+
+    elif step == 'build.SITLPeriphGPS':
+        vehicle_binary = 'sitl_periph_gps.bin/AP_Periph'
+
+    elif step == 'build.Sub':
         vehicle_binary = 'bin/ardusub'
 
-    if step == 'build.SITLPeriphGPS':
-        vehicle_binary = 'sitl_periph_gps.bin/AP_Periph'
+    elif step == 'build.Tracker':
+        vehicle_binary = 'bin/antennatracker'
 
     if step == 'build.Replay':
         return util.build_replay(board='SITL')
@@ -516,11 +508,16 @@ def run_step(step):
                 instance_num = 0
                 if len(supplementary_test_binary.split('.')) >= 3:
                     instance_num = int(supplementary_test_binary.split('.')[2])
-                supplementary_binaries.append([util.reltopdir(os.path.join('build',
-                                                                           config_name,
-                                                                           'bin',
-                                                                           binary_name)),
-                                              '-I {}'.format(instance_num)])
+                supplementary_binaries.append(
+                    [
+                        util.reltopdir(
+                            os.path.join(
+                                'build', config_name, 'bin', binary_name
+                            )
+                        ),
+                        f'-I {instance_num}',
+                    ]
+                )
             # we are running in conjunction with a supplementary app
             # can't have speedup
             opts.speedup = 1.0
@@ -590,7 +587,7 @@ def run_step(step):
     if step == 'clang-scan-build':
         return run_clang_scan_build()
 
-    raise RuntimeError("Unknown step %s" % step)
+    raise RuntimeError(f"Unknown step {step}")
 
 
 class TestResult(object):
@@ -681,9 +678,8 @@ def write_webresults(results_to_write):
     t = mavtemplate.MAVTemplate()
     for h in glob.glob(util.reltopdir('Tools/autotest/web/*.html')):
         html = util.loadfile(h)
-        f = open(buildlogs_path(os.path.basename(h)), mode='w')
-        t.write(f, html, results_to_write)
-        f.close()
+        with open(buildlogs_path(os.path.basename(h)), mode='w') as f:
+            t.write(f, html, results_to_write)
     for f in glob.glob(util.reltopdir('Tools/autotest/web/*.png')):
         shutil.copy(f, buildlogs_path(os.path.basename(f)))
     copy_tree(util.reltopdir("Tools/autotest/web/css"), buildlogs_path("css"), dirs_exist_ok=True)
@@ -735,7 +731,7 @@ def run_tests(steps):
     corefiles = glob.glob("core*")
     corefiles.extend(glob.glob("ap-*.core"))
     if corefiles:
-        print('Removing corefiles: %s' % str(corefiles))
+        print(f'Removing corefiles: {corefiles}')
         for f in corefiles:
             os.unlink(f)
 
@@ -743,18 +739,18 @@ def run_tests(steps):
     for p in "dumpstack.sh_*", "dumpcore.sh_*", "autotest-*tlog":
         diagnostic_files.extend(glob.glob(p))
     if diagnostic_files:
-        print('Removing diagnostic files: %s' % str(diagnostic_files))
+        print(f'Removing diagnostic files: {diagnostic_files}')
         for f in diagnostic_files:
             os.unlink(f)
 
     passed = True
     failed = []
-    failed_testinstances = dict()
+    failed_testinstances = {}
     for step in steps:
         util.pexpect_close_all()
 
         t1 = time.time()
-        print(">>>> RUNNING STEP: %s at %s" % (step, time.asctime()))
+        print(f">>>> RUNNING STEP: {step} at {time.asctime()}")
         try:
             success = run_step(step)
             testinstance = None
@@ -763,9 +759,9 @@ def run_tests(steps):
             if success:
                 results.add(step, '<span class="passed-text">PASSED</span>',
                             time.time() - t1)
-                print(">>>> PASSED STEP: %s at %s" % (step, time.asctime()))
+                print(f">>>> PASSED STEP: {step} at {time.asctime()}")
             else:
-                print(">>>> FAILED STEP: %s at %s" % (step, time.asctime()))
+                print(f">>>> FAILED STEP: {step} at {time.asctime()}")
                 passed = False
                 failed.append(step)
                 if testinstance is not None:
@@ -777,8 +773,7 @@ def run_tests(steps):
         except Exception as msg:
             passed = False
             failed.append(step)
-            print(">>>> FAILED STEP: %s at %s (%s)" %
-                  (step, time.asctime(), msg))
+            print(f">>>> FAILED STEP: {step} at {time.asctime()} ({msg})")
             traceback.print_exc(file=sys.stdout)
             results.add(step,
                         '<span class="failed-text">FAILED</span>',
@@ -797,10 +792,10 @@ def run_tests(steps):
         if len(keys):
             print("Failure Summary:")
         for key in keys:
-            print("  %s:" % key)
+            print(f"  {key}:")
             for testinstance in failed_testinstances[key]:
                 for failure in testinstance.fail_list:
-                    print("  " + str(failure))
+                    print(f"  {str(failure)}")
 
         print("FAILED %u tests: %s" % (len(failed), failed))
 
@@ -817,7 +812,7 @@ vehicle_list = ['Sub', 'Copter', 'Plane', 'Tracker', 'Rover', 'QuadPlane', 'Bala
 def list_subtests():
     """Print the list of tests and tests description for each vehicle."""
     for vehicle in sorted(vehicle_list):
-        tester_class = tester_class_map["test.%s" % vehicle]
+        tester_class = tester_class_map[f"test.{vehicle}"]
         tester = tester_class("/bin/true", None)
         subtests = tester.tests()
         sorted_list = []
@@ -827,9 +822,9 @@ def list_subtests():
             sorted_list.append([subtest.name, subtest.description])
         sorted_list.sort()
 
-        print("%s:" % vehicle)
+        print(f"{vehicle}:")
         for subtest in sorted_list:
-            print("    %s: %s" % (subtest[0], subtest[1]))
+            print(f"    {subtest[0]}: {subtest[1]}")
         print("")
 
 
@@ -839,7 +834,7 @@ def list_subtests_for_vehicle(vehicle_type):
     if "Test" in vehicle_type:
         vehicle_type = re.findall('[A-Z][a-z0-9]*', vehicle_type)[0]
     if vehicle_type in vehicle_list:
-        tester_class = tester_class_map["test.%s" % vehicle_type]
+        tester_class = tester_class_map[f"test.{vehicle_type}"]
         tester = tester_class("/bin/true", None)
         subtests = tester.tests()
         sorted_list = []
@@ -849,7 +844,7 @@ def list_subtests_for_vehicle(vehicle_type):
             sorted_list.append([subtest.name, subtest.description])
         sorted_list.sort()
         for subtest in sorted_list:
-            print("%s " % subtest[0], end='')
+            print(f"{subtest[0]} ", end='')
         print("")  # needed to clear the trailing %
 
 

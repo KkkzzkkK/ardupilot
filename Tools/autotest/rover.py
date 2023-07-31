@@ -62,7 +62,7 @@ class AutoTestRover(AutoTest):
         return os.path.realpath(__file__)
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduRover_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduRover_Tests/{name}/"
 
     def sitl_start_location(self):
         return SITL_START_LOCATION
@@ -380,7 +380,7 @@ class AutoTestRover(AutoTest):
     #################################################
     def drive_mission(self, filename, strict=True):
         """Drive a mission from a file."""
-        self.progress("Driving mission %s" % filename)
+        self.progress(f"Driving mission {filename}")
         wp_count = self.load_mission(filename, strict=strict)
         self.wait_ready_to_arm()
         self.arm_vehicle()
@@ -428,7 +428,7 @@ class AutoTestRover(AutoTest):
                                     blocking=True,
                                     timeout=1)
             if m is not None and "ArduRover" in m.text:
-                self.progress("banner received: %s" % m.text)
+                self.progress(f"banner received: {m.text}")
                 return
             if time.time() - start > 10:
                 break
@@ -523,7 +523,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             m = self.mav.recv_match(type='MISSION_CURRENT',
                                     blocking=True,
                                     timeout=1)
-            self.progress("MISSION_CURRENT: %s" % str(m))
+            self.progress(f"MISSION_CURRENT: {str(m)}")
             if m.seq == 3:
                 break
 
@@ -549,9 +549,9 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         # current Rover blows straight past the home position and ends
         # up ~6m past the home point.
         home_distance = self.distance_to_home()
-        home_distance_min = 5.5
         home_distance_max = self.drive_rtl_mission_max_distance_from_home()
         if home_distance > home_distance_max:
+            home_distance_min = 5.5
             raise NotAchievedException(
                 "Did not stop near home (%f metres distant (%f > want > %f))" %
                 (home_distance, home_distance_min, home_distance_max))
@@ -827,6 +827,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             throttle_override = 1500
 
             tstart = self.get_sim_time_cached()
+            want_speed = 2.0
             while True:
                 if self.get_sim_time_cached() - tstart > 10:
                     raise AutoTestTimeoutException("Did not reach speed")
@@ -844,7 +845,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     65535) # chan8_raw
 
                 m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-                want_speed = 2.0
                 self.progress("Speed=%f want=<%f" % (m.groundspeed, want_speed))
                 if m.groundspeed < want_speed:
                     break
@@ -856,6 +856,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
             throttle_override = 1500
             tstart = self.get_sim_time_cached()
+            want_speed = 5.0
             while True:
                 if self.get_sim_time_cached() - tstart > 10:
                     raise AutoTestTimeoutException("Did not speed back up")
@@ -873,7 +874,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     65535) # chan8_raw
 
                 m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-                want_speed = 5.0
                 self.progress("Speed=%f want=>%f" % (m.groundspeed, want_speed))
 
                 if m.groundspeed > want_speed:
@@ -1072,6 +1072,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             expected_throttle = 0 # in VFR_HUD
 
             tstart = self.get_sim_time_cached()
+            want_speed = 2.0
             while True:
                 if self.get_sim_time_cached() - tstart > 10:
                     raise AutoTestTimeoutException("Did not reach speed")
@@ -1085,7 +1086,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     0) # button mask
 
                 m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-                want_speed = 2.0
                 self.progress("Speed=%f want=<%f  throttle=%u want=%u" %
                               (m.groundspeed, want_speed, m.throttle, expected_throttle))
                 if m.groundspeed < want_speed and m.throttle == expected_throttle:
@@ -1098,6 +1098,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             expected_throttle = 36 # in VFR_HUD, corresponding to normal_rc_throttle adjusted for channel min/max
 
             tstart = self.get_sim_time_cached()
+            want_speed = 5.0
+
             while True:
                 if self.get_sim_time_cached() - tstart > 10:
                     raise AutoTestTimeoutException("Did not stop")
@@ -1111,8 +1113,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     0) # button mask
 
                 m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-                want_speed = 5.0
-
                 self.progress("Speed=%f want=>%f  throttle=%u want=%u" %
                               (m.groundspeed, want_speed, m.throttle, expected_throttle))
                 if m.groundspeed > want_speed and m.throttle == expected_throttle:
@@ -1154,16 +1154,14 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             dist_travelled = self.get_distance_int(prev_cf, cf)
             prev_cf = cf
             mc = self.mav.messages.get("MISSION_CURRENT", None)
-            if mc is None:
+            if mc is None or mc.seq not in [2, 4, 5]:
                 continue
             elif mc.seq == 2:
                 expected_distance = 2
             elif mc.seq == 4:
                 expected_distance = 5
-            elif mc.seq == 5:
-                break
             else:
-                continue
+                break
             self.progress("Expected distance %f got %f" %
                           (expected_distance, dist_travelled))
             error = abs(expected_distance - dist_travelled)
@@ -1452,26 +1450,26 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         ]
 
     def fence_which_exceeds_storage_space(self, target_system=1, target_component=1):
-        ret = []
-        for i in range(0, 60):
-            ret.append(self.mav.mav.mission_item_int_encode(
+        return [
+            self.mav.mav.mission_item_int_encode(
                 target_system,
                 target_component,
-                i, # seq
+                i,  # seq
                 mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
                 mavutil.mavlink.MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
-                0, # current
-                0, # autocontinue
-                10, # p1
-                0, # p2
-                0, # p3
-                0, # p4
-                int(1.0 * 1e7), # latitude
-                int(1.0017 * 1e7), # longitude
-                31.0000, # altitude
-                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+                0,  # current
+                0,  # autocontinue
+                10,  # p1
+                0,  # p2
+                0,  # p3
+                0,  # p4
+                int(1.0 * 1e7),  # latitude
+                int(1.0017 * 1e7),  # longitude
+                31.0000,  # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
             )
-        return ret
+            for i in range(0, 60)
+        ]
 
     def fences_which_should_not_upload(self, target_system=1, target_component=1):
         return [
@@ -1732,8 +1730,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             if self.get_sim_time_cached() - tstart > timeout:
                 raise NotAchievedException("Did not get error message back")
             m = self.mav.recv_match(type='STATUSTEXT', blocking=True, timeout=1)
-            self.progress("statustext: %s (want='%s')" %
-                          (str(m), statustext_fragment))
+            self.progress(f"statustext: {str(m)} (want='{statustext_fragment}')")
             if m is None:
                 continue
             if statustext_fragment in m.text:
@@ -1865,7 +1862,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 #        downloaded_items = self.download_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
         item_seq = 2
         item = items[item_seq]
-        print("item is (%s)" % str(item))
+        print(f"item is ({str(item)})")
         self.progress("original x=%d" % item.x)
         item.x += int(0.1 * 1e7)
         self.progress("new x=%d" % item.x)
@@ -2051,12 +2048,12 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             int(1.0017 * 1e7), # longitude
             0.0000, # altitude
             mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
-        print("item is (%s)" % str(item))
+        print(f"item is ({str(item)})")
         self.click_location_from_item(mavproxy, item)
         mavproxy.send("fence addcircle inc %u\n" % radius)
         self.delay_sim_time(1)
         downloaded_items = self.download_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
-        print("downloaded items: %s" % str(downloaded_items))
+        print(f"downloaded items: {str(downloaded_items)}")
         self.check_fence_items_same([item], downloaded_items)
 
         radius_exc = 57.3
@@ -2080,7 +2077,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         mavproxy.send("fence addcircle exc %f\n" % radius_exc)
         self.delay_sim_time(1)
         downloaded_items = self.download_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
-        print("downloaded items: %s" % str(downloaded_items))
+        print(f"downloaded items: {str(downloaded_items)}")
         self.check_fence_items_same([item, item2], downloaded_items)
         self.end_subsubtest("fence addcircle")
 
@@ -2214,9 +2211,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                  mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT))
         if items[0].frame != mavutil.mavlink.MAV_FRAME_GLOBAL:
             raise NotAchievedException(
-                "Unexpected frame want=%s got=%s," %
-                (self.string_for_frame(mavutil.mavlink.MAV_FRAME_GLOBAL),
-                 self.string_for_frame(items[0].frame)))
+                f"Unexpected frame want={self.string_for_frame(mavutil.mavlink.MAV_FRAME_GLOBAL)} got={self.string_for_frame(items[0].frame)},"
+            )
         got_lat = items[0].x
         want_lat = lat * 1e7
         if abs(got_lat - want_lat) > 1:
@@ -2249,7 +2245,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                                             target_component,
                                             0)
         m = self.mav.recv_match(type="FENCE_POINT", blocking=True, timeout=1)
-        print("m: %s" % str(m))
+        print(f"m: {str(m)}")
 
         self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
                            target_system=target_system,
@@ -2267,15 +2263,15 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.start_subtest("Ensuring bad fences get bounced")
         for fence in self.fences_which_should_not_upload(target_system=target_system, target_component=target_component):
             (name, items) = fence
-            self.progress("Ensuring (%s) gets bounced" % (name,))
+            self.progress(f"Ensuring ({name}) gets bounced")
             self.assert_fence_does_not_upload(items)
 
         self.start_subtest("Ensuring good fences don't get bounced")
         for fence in self.fences_which_should_upload(target_system=target_system, target_component=target_component):
             (name, items) = fence
-            self.progress("Ensuring (%s) gets uploaded" % (name,))
+            self.progress(f"Ensuring ({name}) gets uploaded")
             self.check_fence_upload_download(items)
-            self.progress("(%s) uploaded just fine" % (name,))
+            self.progress(f"({name}) uploaded just fine")
 
         self.test_gcs_fence_update_fencepoint(target_system=target_system,
                                               target_component=target_component)

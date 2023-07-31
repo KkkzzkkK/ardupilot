@@ -16,8 +16,6 @@ class TestEmpty(Test):
         self.result = TestResult()
         self.result.status = TestResult.StatusType.GOOD
 
-        # all the logic for this test is in the helper function, as it can also be called up front as an early exit
-        emptyErr = DataflashLog.DataflashLogHelper.isLogEmpty(logdata)
-        if emptyErr:
+        if emptyErr := DataflashLog.DataflashLogHelper.isLogEmpty(logdata):
             self.result.status = TestResult.StatusType.FAIL
-            self.result.statusMessage = "Empty log? " + emptyErr
+            self.result.statusMessage = f"Empty log? {emptyErr}"

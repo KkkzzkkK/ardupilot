@@ -158,4 +158,4 @@ class TestCompass(Test):
 
         except KeyError as e:
             self.result.status = TestResult.StatusType.FAIL
-            self.result.statusMessage = str(e) + ' not found'
+            self.result.statusMessage = f'{str(e)} not found'

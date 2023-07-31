@@ -26,6 +26,7 @@ some of them will be rewritten, see the implementation for details).
 This tool also checks if the headers used by the source files don't use
 vehicle-related headers and fails the build if they do.
 """
+
 import os
 import re
 
@@ -36,13 +37,13 @@ from waflib.Tools import c_preproc
 
 import ardupilotwaf as ap
 
-UTILITY_SOURCE_EXTS = ['utility/' + glob for glob in ap.SOURCE_EXTS]
+UTILITY_SOURCE_EXTS = [f'utility/{glob}' for glob in ap.SOURCE_EXTS]
 
 def _common_tgen_name(library):
-    return 'objs/%s' % library
+    return f'objs/{library}'
 
 def _vehicle_tgen_name(library, vehicle):
-    return 'objs/%s/%s' % (library, vehicle)
+    return f'objs/{library}/{vehicle}'
 
 _vehicle_indexes = {}
 def _vehicle_index(vehicle):
@@ -104,11 +105,11 @@ def ap_library(bld, library, vehicle):
         library_dir = bld.srcnode.find_dir('.')
         wildcard = library
     else:
-        library_dir = bld.srcnode.find_dir('libraries/%s' % library)
+        library_dir = bld.srcnode.find_dir(f'libraries/{library}')
         wildcard = ap.SOURCE_EXTS + UTILITY_SOURCE_EXTS
 
     if not library_dir:
-        bld.fatal('ap_library: %s not found' % library)
+        bld.fatal(f'ap_library: {library} not found')
 
     src = library_dir.ant_glob(wildcard)
 
@@ -181,13 +182,15 @@ class ap_library_check_headers(Task.Task):
         for n in self.headers:
             s = _remove_comments(n.read())
             if _macros_re.search(s):
-                raise Errors.WafError('%s: library header uses vehicle-dependent macros' % n.srcpath())
+                raise Errors.WafError(
+                    f'{n.srcpath()}: library header uses vehicle-dependent macros'
+                )
 
     def uid(self):
         try:
             return self._uid
         except AttributeError:
-            self._uid = 'check_headers-%s' % self.compiled_task.uid()
+            self._uid = f'check_headers-{self.compiled_task.uid()}'
             return self._uid
 
     def signature(self):
@@ -215,14 +218,7 @@ class ap_library_check_headers(Task.Task):
             if rel_p in self.whitelist:
                 continue
 
-            # check if the path ends with something in the white list
-            # this is required for white listing files in 'build/' (for scripting generated bindings)
-            found = False
-            for m in self.whitelist:
-                if rel_p.endswith(m):
-                    found = True
-                    break
-            
+            found = any(rel_p.endswith(m) for m in self.whitelist)
             if found:
                 continue
 
@@ -266,9 +262,10 @@ def double_precision_check(tasks):
             # get a list of tasks we need to change to be double precision
             double_tasks = []
             for library in t.env.DOUBLE_PRECISION_SOURCES.keys():
-                for s in t.env.DOUBLE_PRECISION_SOURCES[library]:
-                    double_tasks.append([library, s])
-
+                double_tasks.extend(
+                    [library, s]
+                    for s in t.env.DOUBLE_PRECISION_SOURCES[library]
+                )
             src = str(t.inputs[0]).split('/')[-2:]
             if src in double_tasks:
                 single_precision_option='-fsingle-precision-constant'
@@ -283,10 +280,12 @@ def gsoap_library_check(bld, tasks):
 
     for t in tasks:
         if len(t.inputs) == 1:
-            gsoap_tasks = []
-            for s in t.env.AP_LIB_EXTRA_SOURCES["AP_ONVIF"]:
-                gsoap_tasks.append(bld.bldnode.find_or_declare(os.path.join('libraries', "AP_ONVIF", s)))
-
+            gsoap_tasks = [
+                bld.bldnode.find_or_declare(
+                    os.path.join('libraries', "AP_ONVIF", s)
+                )
+                for s in t.env.AP_LIB_EXTRA_SOURCES["AP_ONVIF"]
+            ]
             if t.inputs[0] in gsoap_tasks:
                 t.env.CXXFLAGS += [
                     '-Wno-shadow',
@@ -316,8 +315,8 @@ def ap_library_register_for_check(self):
         tsk.compiled_task = t
 
 def configure(cfg):
-    cfg.env.AP_LIBRARIES_OBJECTS_KW = dict()
-    cfg.env.AP_LIB_EXTRA_SOURCES = dict()
-    cfg.env.AP_LIB_EXTRA_CXXFLAGS = dict()
-    cfg.env.AP_LIB_EXTRA_CFLAGS = dict()
-    cfg.env.DOUBLE_PRECISION_SOURCES = dict()
+    cfg.env.AP_LIBRARIES_OBJECTS_KW = {}
+    cfg.env.AP_LIB_EXTRA_SOURCES = {}
+    cfg.env.AP_LIB_EXTRA_CXXFLAGS = {}
+    cfg.env.AP_LIB_EXTRA_CFLAGS = {}
+    cfg.env.DOUBLE_PRECISION_SOURCES = {}

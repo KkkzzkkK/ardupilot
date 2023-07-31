@@ -194,7 +194,7 @@ class cmake_build_task(Task.Task):
         return self.uid_
 
     def __str__(self):
-        return '%s %s' % (self.cmake.name, self.cmake_target)
+        return f'{self.cmake.name} {self.cmake_target}'
 
     def keyword(self):
         return 'CMake Build'
@@ -261,7 +261,7 @@ class CMakeConfig(object):
         env.CMAKE_SRC_DIR = self.srcnode.abspath()
 
         keys = self.vars_keys()
-        env.CMAKE_VARS = ["-D%s='%s'" % (k, self.vars[k]) for k in keys]
+        env.CMAKE_VARS = [f"-D{k}='{self.vars[k]}'" for k in keys]
         env.CMAKE_FLAGS = self.flags
 
         self._config_task.set_outputs(
@@ -281,7 +281,7 @@ class CMakeConfig(object):
 _cmake_instances = {}
 def get_cmake(name):
     if name not in _cmake_instances:
-        raise Exception('cmake: configuration named "%s" not found' % name)
+        raise Exception(f'cmake: configuration named "{name}" not found')
     return _cmake_instances[name]
 
 @conf
@@ -297,7 +297,7 @@ def cmake(bld, name, cmake_src=None, cmake_bld=None, cmake_vars={}, cmake_flags=
         return get_cmake(name)
 
     if name in _cmake_instances:
-        bld.fatal('cmake: configuration named "%s" already exists' % name)
+        bld.fatal(f'cmake: configuration named "{name}" already exists')
 
     if not isinstance(cmake_src, Node.Node):
         cmake_src = bld.path.find_dir(cmake_src)
@@ -339,7 +339,7 @@ def cmake_build(bld, cmake_config, cmake_target, **kw):
     kw['features'] = Utils.to_list(kw.get('features', [])) + ['cmake_build']
 
     if 'name' not in kw:
-        kw['name'] = '%s_%s' % (cmake_config, cmake_target)
+        kw['name'] = f'{cmake_config}_{cmake_target}'
 
     return bld(**kw)
 
@@ -367,19 +367,18 @@ def _check_min_version(cfg):
     cfg.start_msg('Checking cmake version')
     cmd = cfg.env.get_flat('CMAKE'), '--version'
     out = cfg.cmd_and_log(cmd, quiet=Context.BOTH)
-    m = re.search(r'\d+\.\d+(\.\d+(\.\d+)?)?', out)
-    if not m:
+    if m := re.search(r'\d+\.\d+(\.\d+(\.\d+)?)?', out):
+        version = Utils.num2ver(m[0])
+        minver_str = cfg.env.get_flat('CMAKE_MIN_VERSION')
+        minver = Utils.num2ver(minver_str)
+        if version < minver:
+            cfg.fatal(f'cmake must be at least at version {minver_str}')
+        cfg.end_msg(m[0])
+    else:
         cfg.end_msg(
             'unable to parse version, build is not guaranteed to succeed',
             color='YELLOW',
         )
-    else:
-        version = Utils.num2ver(m.group(0))
-        minver_str = cfg.env.get_flat('CMAKE_MIN_VERSION')
-        minver = Utils.num2ver(minver_str)
-        if version < minver:
-            cfg.fatal('cmake must be at least at version %s' % minver_str)
-        cfg.end_msg(m.group(0))
 
 generators = dict(
     default=[
@@ -401,8 +400,9 @@ def configure(cfg):
     l = generators.get(Utils.unversioned_sys_platform(), generators['default'])
     for names, generator in l:
         if cfg.find_program(names, mandatory=False):
-            cfg.env.CMAKE_GENERATOR_OPTION = '-G%s' % generator
+            cfg.env.CMAKE_GENERATOR_OPTION = f'-G{generator}'
             break
     else:
-        cfg.fatal("cmake: couldn't find a suitable CMake generator. " +
-                  "The ones supported by this Waf tool for this platform are: %s" % ', '.join(g for _, g in l))
+        cfg.fatal(
+            f"cmake: couldn't find a suitable CMake generator. The ones supported by this Waf tool for this platform are: {', '.join(g for _, g in l)}"
+        )

@@ -48,7 +48,7 @@ class AutoTestSailboat(AutoTestRover):
             m = self.mav.recv_match(type='MISSION_CURRENT',
                                     blocking=True,
                                     timeout=1)
-            self.progress("MISSION_CURRENT: %s" % str(m))
+            self.progress(f"MISSION_CURRENT: {str(m)}")
             if m.seq == 3:
                 break
 
@@ -81,13 +81,7 @@ class AutoTestSailboat(AutoTestRover):
 
     def tests(self):
         '''return list of all tests'''
-        ret = ([])
-
-        ret.extend([
-            self.DriveRTL,
-            self.DriveMission,
-        ])
-        return ret
+        return [self.DriveRTL, self.DriveMission]
 
     def default_mode(self):
         return 'MANUAL'

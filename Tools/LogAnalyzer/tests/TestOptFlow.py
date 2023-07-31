@@ -117,8 +117,8 @@ class TestFlow(Test):
                 return
 
             # calculate the start time for the roll calibration
-            startTime = int(0)
-            startRollIndex = int(0)
+            startTime = 0
+            startRollIndex = 0
             for i in range(len(Roll)):
                 if abs(Roll[i]) > tilt_threshold:
                     startTime = att_time_us[i]
@@ -129,8 +129,8 @@ class TestFlow(Test):
                     break
 
             # calculate the end time for the roll calibration
-            endTime = int(0)
-            endRollIndex = int(0)
+            endTime = 0
+            endRollIndex = 0
             for i in range(len(Roll) - 1, -1, -1):
                 if abs(Roll[i]) > tilt_threshold:
                     endTime = att_time_us[i]
@@ -165,7 +165,7 @@ class TestFlow(Test):
 
             # calculate the start time for the pitch calibration
             startTime = 0
-            startPitchIndex = int(0)
+            startPitchIndex = 0
             for i in range(len(Pitch)):
                 if abs(Pitch[i]) > tilt_threshold:
                     startTime = att_time_us[i]
@@ -177,7 +177,7 @@ class TestFlow(Test):
 
             # calculate the end time for the pitch calibration
             endTime = 0
-            endPitchIndex = int(0)
+            endPitchIndex = 0
             for i in range(len(Pitch) - 1, -1, -1):
                 if abs(Pitch[i]) > tilt_threshold:
                     endTime = att_time_us[i]
@@ -326,11 +326,9 @@ class TestFlow(Test):
 
             # write correction parameters to file
             test_results_filename = "flow_calibration.param"
-            file = open(test_results_filename, "w")
-            file.write("FLOW_FXSCALER" + " " + str(flow_fxscaler_new) + "\n")
-            file.write("FLOW_FYSCALER" + " " + str(flow_fyscaler_new) + "\n")
-            file.close()
-
+            with open(test_results_filename, "w") as file:
+                file.write("FLOW_FXSCALER" + " " + str(flow_fxscaler_new) + "\n")
+                file.write("FLOW_FYSCALER" + " " + str(flow_fyscaler_new) + "\n")
         except KeyError as e:
             self.result.status = TestResult.StatusType.FAIL
-            self.result.statusMessage = str(e) + ' not found'
+            self.result.statusMessage = f'{str(e)} not found'

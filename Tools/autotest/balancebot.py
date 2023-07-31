@@ -88,8 +88,7 @@ class AutoTestBalanceBot(AutoTestRover):
                     raise NotAchievedException("wheel distance incorrect")
             self.disarm_vehicle()
         except Exception as e:
-            self.progress("Caught exception: %s" %
-                          self.get_exception_stacktrace(e))
+            self.progress(f"Caught exception: {self.get_exception_stacktrace(e)}")
             self.disarm_vehicle()
             ex = e
         self.reboot_sitl()

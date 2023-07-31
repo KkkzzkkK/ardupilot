@@ -23,31 +23,31 @@ def run_example(filepath, valgrind=False, gdb=False):
     if gdb:
         cmd.append("gdb")
     cmd.append(filepath)
-    print("Running: (%s)" % str(cmd))
+    print(f"Running: ({cmd})")
     bob = subprocess.Popen(cmd, stdin=None, close_fds=True)
     retcode = bob.poll()
     time.sleep(10)
-    print("pre-kill retcode: %s" % str(retcode))
+    print(f"pre-kill retcode: {str(retcode)}")
     if retcode is not None:
-        raise ValueError("Process exited before I could kill it (%s)" % str(retcode))
+        raise ValueError(f"Process exited before I could kill it ({str(retcode)})")
     bob.send_signal(signal.SIGTERM)
     time.sleep(1)
     retcode = bob.poll()
-    print("retcode: %s" % str(retcode))
+    print(f"retcode: {str(retcode)}")
     if retcode is None:
         # if we get this far then we're not going to get a gcda file
         # out of this process for coverage analysis; it has to exit
         # normally, and it hasn't responded to a TERM.
         bob.kill()
         retcode2 = bob.wait()
-        print("retcode2: %s" % str(retcode2))
+        print(f"retcode2: {str(retcode2)}")
     elif retcode == -15:
         print("process exited with -15, indicating it didn't catch the TERM signal and exit properly")
     elif retcode != 0:
         # note that process could exit with code 0 and we couldn't tell...
-        raise ValueError("Process exitted with non-zero exitcode %s" % str(retcode))
+        raise ValueError(f"Process exitted with non-zero exitcode {str(retcode)}")
 
-    print("Ran: (%s)" % str(cmd))
+    print(f"Ran: ({cmd})")
 
 
 def run_examples(debug=False, valgrind=False, gdb=False):
@@ -77,7 +77,7 @@ def run_examples(debug=False, valgrind=False, gdb=False):
     }
     for afile in os.listdir(dirpath):
         if afile in skip:
-            print("Skipping %s: %s" % (afile, skip[afile]))
+            print(f"Skipping {afile}: {skip[afile]}")
             continue
         filepath = os.path.join(dirpath, afile)
         if not os.path.isfile(filepath):

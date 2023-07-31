@@ -66,7 +66,7 @@ class AutoTestQuadPlane(AutoTest):
         return "QuadPlane"
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduPlane_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduPlane_Tests/{name}/"
 
     def apply_defaultfile_parameters(self):
         # plane passes in a defaults_filepath in place of applying
@@ -146,7 +146,7 @@ class AutoTestQuadPlane(AutoTest):
         self.start_subtest("Test auxswitch arming with AirMode Switch")
         for mode in ('QSTABILIZE', 'QACRO'):
             """verify that arming with switch results in higher PWM output"""
-            self.progress("Testing %s mode" % mode)
+            self.progress(f"Testing {mode} mode")
             self.change_mode(mode)
             self.zero_throttle()
             self.progress("Arming with switch at zero throttle")
@@ -190,7 +190,7 @@ class AutoTestQuadPlane(AutoTest):
                 'STABILIZE',
                 'TRAINING',
         ):
-            self.progress("Testing %s mode" % mode)
+            self.progress(f"Testing {mode} mode")
             self.change_mode(mode)
             self.zero_throttle()
             self.progress("Arming with switch at zero throttle")
@@ -216,7 +216,7 @@ class AutoTestQuadPlane(AutoTest):
         self.set_parameter("RC7_OPTION", option_airmode)
 
         for mode in ('QSTABILIZE', 'QACRO'):
-            self.progress("Testing %s mode" % mode)
+            self.progress(f"Testing {mode} mode")
             self.change_mode(mode)
             self.zero_throttle()
             self.progress("Arming with GCS at zero throttle")
@@ -236,7 +236,7 @@ class AutoTestQuadPlane(AutoTest):
 
         self.start_subtest("Test GCS arming")
         for mode in ('QSTABILIZE', 'QACRO'):
-            self.progress("Testing %s mode" % mode)
+            self.progress(f"Testing {mode} mode")
             self.change_mode(mode)
             self.zero_throttle()
             self.progress("Arming with GCS at zero throttle")
@@ -270,7 +270,7 @@ class AutoTestQuadPlane(AutoTest):
 
         modes = ('MANUAL', 'FBWA', 'QHOVER')
         for mode in modes:
-            self.progress("Testing %s mode" % mode)
+            self.progress(f"Testing {mode} mode")
             self.change_mode(mode)
             self.arm_vehicle()
             self.progress("Raising throttle")
@@ -284,7 +284,7 @@ class AutoTestQuadPlane(AutoTest):
 
     def fly_mission(self, filename, fence=None, height_accuracy=-1):
         """Fly a mission from a file."""
-        self.progress("Flying mission %s" % filename)
+        self.progress(f"Flying mission {filename}")
         num_wp = self.load_mission(filename)
         if self.mavproxy is not None:
             self.mavproxy.send('wp list\n')
@@ -410,7 +410,7 @@ class AutoTestQuadPlane(AutoTest):
     def fly_home_land_and_disarm(self, timeout=30):
         self.set_parameter("LAND_TYPE", 0)
         filename = "flaps.txt"
-        self.progress("Using %s to fly home" % filename)
+        self.progress(f"Using {filename} to fly home")
         self.load_mission(filename)
         self.change_mode("AUTO")
         self.set_current_waypoint(7)
@@ -610,8 +610,7 @@ class AutoTestQuadPlane(AutoTest):
             self.reboot_sitl()
 
         except Exception as e:
-            self.progress("Exception caught: %s" % (
-                self.get_exception_stacktrace(e)))
+            self.progress(f"Exception caught: {self.get_exception_stacktrace(e)}")
             ex = e
 
         self.context_pop()
@@ -674,7 +673,7 @@ class AutoTestQuadPlane(AutoTest):
         self.takeoff(10, mode="QLOITER")
         self.set_parameter("STICK_MIXING", 0)
         self.set_rc(4, 1700)
-        for mode in "QLOITER", "QHOVER":
+        for _ in ("QLOITER", "QHOVER"):
             self.wait_heading(45)
             self.wait_heading(90)
             self.wait_heading(180)
@@ -1032,7 +1031,7 @@ class AutoTestQuadPlane(AutoTest):
             self.disarm_vehicle()
             disarmed = True
         except ValueError as e:
-            self.progress("Got %s" % repr(e))
+            self.progress(f"Got {repr(e)}")
             if "Expected MAV_RESULT_ACCEPTED got MAV_RESULT_FAILED" not in str(e):
                 raise e
         if disarmed:
@@ -1137,10 +1136,10 @@ class AutoTestQuadPlane(AutoTest):
 
         self.wait_text("Tuning: starting tune", check_context=True)
         for axis in ['RLL', 'PIT', 'YAW']:
-            self.wait_text("Starting %s tune" % axis, check_context=True)
-            self.wait_text("Tuning: %s_D done" % axis, check_context=True, timeout=120)
-            self.wait_text("Tuning: %s_P done" % axis, check_context=True, timeout=120)
-            self.wait_text("Tuning: %s done" % axis, check_context=True, timeout=120)
+            self.wait_text(f"Starting {axis} tune", check_context=True)
+            self.wait_text(f"Tuning: {axis}_D done", check_context=True, timeout=120)
+            self.wait_text(f"Tuning: {axis}_P done", check_context=True, timeout=120)
+            self.wait_text(f"Tuning: {axis} done", check_context=True, timeout=120)
         self.wait_text("Tuning: YAW done", check_context=True, timeout=120)
 
         # to test aux function method, use aux fn for save

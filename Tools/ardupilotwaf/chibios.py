@@ -31,7 +31,7 @@ def _load_dynamic_env_data(bld):
             # relative paths from the make build are relative to BUILDROOT
             d = os.path.join(bld.env.BUILDROOT, d)
         d = os.path.normpath(d)
-        if not d in idirs2:
+        if d not in idirs2:
             idirs2.append(d)
     _dynamic_env_data['include_dirs'] = idirs2
 
@@ -59,16 +59,16 @@ class upload_fw(Task.Task):
         src = self.inputs[0]
         # Refer Tools/scripts/macos_remote_upload.sh for details
         if 'AP_OVERRIDE_UPLOAD_CMD' in os.environ:
-            cmd = "{} '{}'".format(os.environ['AP_OVERRIDE_UPLOAD_CMD'], src.abspath())
+            cmd = f"{os.environ['AP_OVERRIDE_UPLOAD_CMD']} '{src.abspath()}'"
         elif "microsoft-standard-WSL2" in platform.release():
             if not self.wsl2_prereq_checks():
                 return
             print("If this takes takes too long here, try power-cycling your hardware\n")
-            cmd = "{} -u '{}/uploader.py' '{}'".format('python.exe', upload_tools, src.abspath())
+            cmd = f"python.exe -u '{upload_tools}/uploader.py' '{src.abspath()}'"
         else:
-            cmd = "{} '{}/uploader.py' '{}'".format(self.env.get_flat('PYTHON'), upload_tools, src.abspath())
+            cmd = f"{self.env.get_flat('PYTHON')} '{upload_tools}/uploader.py' '{src.abspath()}'"
         if upload_port is not None:
-            cmd += " '--port' '%s'" % upload_port
+            cmd += f" '--port' '{upload_port}'"
         if self.generator.bld.options.upload_force:
             cmd += " '--force'"
         return self.exec_command(cmd)
@@ -98,7 +98,11 @@ class upload_fw(Task.Task):
         except subprocess.CalledProcessError:
             #if where.exe can't find the file it returns a non-zero result which throws this exception
             where_python = ""
-        if not where_python or not "\Python\Python" in where_python or "python.exe" not in where_python:
+        if (
+            not where_python
+            or "\Python\Python" not in where_python
+            or "python.exe" not in where_python
+        ):
             print(self.get_full_wsl2_error_msg("Windows python.exe not found"))
             return False
         return True
@@ -155,18 +159,14 @@ class generate_bin(Task.Task):
         return "Generating"
     def run(self):
         if self.env.HAS_EXTERNAL_FLASH_SECTIONS:
-            ret = self.split_sections()
-            if (ret < 0):
-                return ret
-            return ret
-        else:
-            cmd = [self.env.get_flat('OBJCOPY'), '-O', 'binary', self.inputs[0].relpath(),  self.outputs[0].relpath()]
-            self.exec_command(cmd)
+            return self.split_sections()
+        cmd = [self.env.get_flat('OBJCOPY'), '-O', 'binary', self.inputs[0].relpath(),  self.outputs[0].relpath()]
+        self.exec_command(cmd)
 
     '''list sections and split into two binaries based on section's location in internal, external or in ram'''
     def split_sections(self):
         # get a list of sections
-        cmd = "'{}' -A -x {}".format(self.env.get_flat('SIZE'), self.inputs[0].relpath())
+        cmd = f"'{self.env.get_flat('SIZE')}' -A -x {self.inputs[0].relpath()}"
         out = self.generator.bld.cmd_and_log(cmd, quiet=Context.BOTH, cwd=self.env.get_flat('BUILDROOT'))
         extf_sections = []
         intf_sections = []
@@ -185,12 +185,12 @@ class generate_bin(Task.Task):
             except ValueError:
                 continue
             if (addr >= self.EXTF_MEMORY_START) and (addr <= self.EXTF_MEMORY_END):
-                extf_sections.append("--only-section=%s" % section_line[0])
+                extf_sections.append(f"--only-section={section_line[0]}")
                 if section_line[0] == '.text':
                     is_text_in_extf = True
                     found_text_section = True
             elif (addr >= self.INTF_MEMORY_START) and (addr <= self.INTF_MEMORY_END):
-                intf_sections.append("--only-section=%s" % section_line[0])
+                intf_sections.append(f"--only-section={section_line[0]}")
                 if section_line[0] == '.text':
                     is_text_in_extf = False
                     found_text_section = True
@@ -200,23 +200,21 @@ class generate_bin(Task.Task):
         if found_text_section:
             for section in ramsections:
                 if is_text_in_extf:
-                    extf_sections.append("--only-section=%s" % section)
+                    extf_sections.append(f"--only-section={section}")
                 else:
-                    intf_sections.append("--only-section=%s" % section)
+                    intf_sections.append(f"--only-section={section}")
         else:
             Logs.error("Couldn't find .text section")
         # create intf binary
         if len(intf_sections):
-            cmd = "'{}' {} -O binary {} {}".format(self.env.get_flat('OBJCOPY'),
-                                                ' '.join(intf_sections), self.inputs[0].relpath(), self.outputs[0].relpath())
+            cmd = f"'{self.env.get_flat('OBJCOPY')}' {' '.join(intf_sections)} -O binary {self.inputs[0].relpath()} {self.outputs[0].relpath()}"
         else:
-            cmd = "cp /dev/null {}".format(self.outputs[0].relpath())
+            cmd = f"cp /dev/null {self.outputs[0].relpath()}"
         ret = self.exec_command(cmd)
         if (ret < 0):
             return ret
         # create extf binary
-        cmd = "'{}' {} -O binary {} {}".format(self.env.get_flat('OBJCOPY'),
-                                                ' '.join(extf_sections), self.inputs[0].relpath(), self.outputs[1].relpath())
+        cmd = f"'{self.env.get_flat('OBJCOPY')}' {' '.join(extf_sections)} -O binary {self.inputs[0].relpath()} {self.outputs[1].relpath()}"
         return self.exec_command(cmd)
 
     def __str__(self):
@@ -238,11 +236,11 @@ def sign_firmware(image, private_keyfile):
     try:
         key = open(private_keyfile, 'r').read()
     except Exception as ex:
-        Logs.error("Failed to open %s" % private_keyfile)
+        Logs.error(f"Failed to open {private_keyfile}")
         return None
     keytype = "PRIVATE_KEYV1:"
     if not key.startswith(keytype):
-        Logs.error("Bad private key file %s" % private_keyfile)
+        Logs.error(f"Bad private key file {private_keyfile}")
         return None
     key = base64.b64decode(key[len(keytype):])
     sig = monocypher.signature_sign(key, image)
@@ -277,20 +275,18 @@ class set_app_descriptor(Task.Task):
         upload_tools = self.env.get_flat('UPLOAD_TOOLS')
         sys.path.append(upload_tools)
         from uploader import crc32
-        if self.generator.bld.env.AP_SIGNED_FIRMWARE:
-            desc_len = 92
-        else:
-            desc_len = 16
+        desc_len = 92 if self.generator.bld.env.AP_SIGNED_FIRMWARE else 16
         img1 = bytearray(img[:offset])
         img2 = bytearray(img[offset+desc_len:])
         crc1 = to_unsigned(crc32(img1))
         crc2 = to_unsigned(crc32(img2))
         githash = to_unsigned(int('0x' + os.environ.get('GIT_VERSION', self.generator.bld.git_head_hash(short=True)),16))
         if self.generator.bld.env.AP_SIGNED_FIRMWARE:
-            sig = bytearray([0 for i in range(76)])
+            sig = bytearray([0 for _ in range(76)])
             if self.generator.bld.env.PRIVATE_KEY:
-                sig_signed = sign_firmware(img1+img2, self.generator.bld.env.PRIVATE_KEY)
-                if sig_signed:
+                if sig_signed := sign_firmware(
+                    img1 + img2, self.generator.bld.env.PRIVATE_KEY
+                ):
                     Logs.info("Signed firmware")
                     sig = sig_signed
                 else:
@@ -318,9 +314,11 @@ class generate_apj(Task.Task):
         d = {
             "board_id": int(self.env.APJ_BOARD_ID),
             "magic": "APJFWv1",
-            "description": "Firmware for a %s board" % self.env.APJ_BOARD_TYPE,
-            "image": base64.b64encode(zlib.compress(intf_img,9)).decode('utf-8'),
-            "extf_image": base64.b64encode(zlib.compress(extf_img,9)).decode('utf-8'),
+            "description": f"Firmware for a {self.env.APJ_BOARD_TYPE} board",
+            "image": base64.b64encode(zlib.compress(intf_img, 9)).decode('utf-8'),
+            "extf_image": base64.b64encode(zlib.compress(extf_img, 9)).decode(
+                'utf-8'
+            ),
             "summary": self.env.BOARD,
             "version": "0.1",
             "image_size": len(intf_img),
@@ -329,10 +327,11 @@ class generate_apj(Task.Task):
             "image_maxsize": int(self.env.FLASH_TOTAL),
             "flash_free": int(self.env.FLASH_TOTAL) - len(intf_img),
             "extflash_total": int(self.env.EXT_FLASH_SIZE_MB * 1024 * 1024),
-            "extflash_free": int(self.env.EXT_FLASH_SIZE_MB * 1024 * 1024) - len(extf_img),
+            "extflash_free": int(self.env.EXT_FLASH_SIZE_MB * 1024 * 1024)
+            - len(extf_img),
             "git_identity": self.generator.bld.git_head_hash(short=True),
             "board_revision": 0,
-            "USBID": self.env.USBID
+            "USBID": self.env.USBID,
         }
         if self.env.MANUFACTURER:
             d["manufacturer"] = self.env.MANUFACTURER
@@ -343,9 +342,8 @@ class generate_apj(Task.Task):
             # file is idential for same git hash and compiler
             d["build_time"] = int(time.time())
         apj_file = self.outputs[0].abspath()
-        f = open(apj_file, "w")
-        f.write(json.dumps(d, indent=4))
-        f.close()
+        with open(apj_file, "w") as f:
+            f.write(json.dumps(d, indent=4))
 
 class build_abin(Task.Task):
     '''build an abin file for skyviper firmware upload via web UI'''
@@ -408,14 +406,16 @@ def chibios_firmware(self):
     cleanup_task = self.create_task('build_normalized_bins', src=bin_target)
     cleanup_task.set_run_after(generate_apj_task)
 
-    bootloader_bin = self.bld.srcnode.make_node("Tools/bootloaders/%s_bl.bin" % self.env.BOARD)
+    bootloader_bin = self.bld.srcnode.make_node(
+        f"Tools/bootloaders/{self.env.BOARD}_bl.bin"
+    )
     if self.bld.env.HAVE_INTEL_HEX:
         if os.path.exists(bootloader_bin.abspath()):
             hex_target = self.bld.bldnode.find_or_declare('bin/' + link_output.change_ext('.hex').name)
             hex_task = self.create_task('build_intel_hex', src=[bin_target[0], bootloader_bin], tgt=hex_target)
             hex_task.set_run_after(cleanup_task)
         else:
-            print("Not embedding bootloader; %s does not exist" % bootloader_bin)
+            print(f"Not embedding bootloader; {bootloader_bin} does not exist")
 
     if self.env.DEFAULT_PARAMETERS:
         default_params_task = self.create_task('set_default_parameters',
@@ -434,7 +434,7 @@ def chibios_firmware(self):
         generate_apj_task.set_run_after(generate_bin_task)
         if hex_task is not None:
             hex_task.set_run_after(generate_bin_task)
-        
+
     if self.bld.options.upload:
         _upload_task = self.create_task('upload_fw', src=apj_target)
         _upload_task.set_run_after(generate_apj_task)
@@ -485,16 +485,16 @@ def load_env_vars(env):
             if isinstance(env[k], dict):
                 a = v.split('=')
                 env[k][a[0]] = '='.join(a[1:])
-                print("env updated %s=%s" % (k, v))
+                print(f"env updated {k}={v}")
             elif isinstance(env[k], list):
                 env[k].append(v)
-                print("env appended %s=%s" % (k, v))
+                print(f"env appended {k}={v}")
             else:
                 env[k] = v
-                print("env added %s=%s" % (k, v))
+                print(f"env added {k}={v}")
         else:
             env[k] = v
-            print("env set %s=%s" % (k, v))
+            print(f"env set {k}={v}")
     if env.DEBUG or env.DEBUG_SYMBOLS:
         env.CHIBIOS_BUILD_FLAGS += ' ENABLE_DEBUG_SYMBOLS=yes'
     if env.ENABLE_ASSERTS:
@@ -519,7 +519,7 @@ def setup_optimization(env):
         OPTIMIZE = "-Os"
     env.CFLAGS += [ OPTIMIZE ]
     env.CXXFLAGS += [ OPTIMIZE ]
-    env.CHIBIOS_BUILD_FLAGS += ' USE_COPT=%s' % OPTIMIZE
+    env.CHIBIOS_BUILD_FLAGS += f' USE_COPT={OPTIMIZE}'
 
 def configure(cfg):
     cfg.find_program('make', var='MAKE')
@@ -532,6 +532,7 @@ def configure(cfg):
 
     def bldpath(path):
         return bldnode.make_node(path).abspath()
+
     env.AP_PROGRAM_FEATURES += ['ch_ap_program']
 
     kw = env.AP_LIBRARIES_OBJECTS_KW
@@ -557,14 +558,12 @@ def configure(cfg):
     env.AP_HAL_REL = os.path.relpath(env.AP_HAL_ROOT, env.BUILDROOT)
     env.BUILDDIR_REL = os.path.relpath(env.BUILDDIR, env.BUILDROOT)
 
-    mk_custom = srcpath('libraries/AP_HAL_ChibiOS/hwdef/%s/chibios_board.mk' % env.BOARD)
+    mk_custom = srcpath(
+        f'libraries/AP_HAL_ChibiOS/hwdef/{env.BOARD}/chibios_board.mk'
+    )
     mk_common = srcpath('libraries/AP_HAL_ChibiOS/hwdef/common/chibios_board.mk')
     # see if there is a board specific make file
-    if os.path.exists(mk_custom):
-        env.BOARD_MK = mk_custom
-    else:
-        env.BOARD_MK = mk_common
-
+    env.BOARD_MK = mk_custom if os.path.exists(mk_custom) else mk_common
     if cfg.options.default_parameters:
         cfg.msg('Default parameters', cfg.options.default_parameters, color='YELLOW')
         env.DEFAULT_PARAMETERS = cfg.options.default_parameters
@@ -585,14 +584,20 @@ def generate_hwdef_h(env):
     import subprocess
     if env.BOOTLOADER:
         if len(env.HWDEF) == 0:
-            env.HWDEF = os.path.join(env.SRCROOT, 'libraries/AP_HAL_ChibiOS/hwdef/%s/hwdef-bl.dat' % env.BOARD)
+            env.HWDEF = os.path.join(
+                env.SRCROOT,
+                f'libraries/AP_HAL_ChibiOS/hwdef/{env.BOARD}/hwdef-bl.dat',
+            )
         else:
             # update to using hwdef-bl.dat
             env.HWDEF = env.HWDEF.replace('hwdef.dat', 'hwdef-bl.dat')
         env.BOOTLOADER_OPTION="--bootloader"
     else:
         if len(env.HWDEF) == 0:
-            env.HWDEF = os.path.join(env.SRCROOT, 'libraries/AP_HAL_ChibiOS/hwdef/%s/hwdef.dat' % env.BOARD)
+            env.HWDEF = os.path.join(
+                env.SRCROOT,
+                f'libraries/AP_HAL_ChibiOS/hwdef/{env.BOARD}/hwdef.dat',
+            )
         env.BOOTLOADER_OPTION=""
 
     if env.AP_SIGNED_FIRMWARE:
@@ -608,7 +613,7 @@ def generate_hwdef_h(env):
     if env.HWDEF_EXTRA:
         cmd += " '{0}'".format(env.HWDEF_EXTRA)
     if env.BOOTLOADER_OPTION:
-        cmd += " " + env.BOOTLOADER_OPTION
+        cmd += f" {env.BOOTLOADER_OPTION}"
     return subprocess.call(cmd, shell=True)
 
 def pre_build(bld):
@@ -630,16 +635,11 @@ def pre_build(bld):
 def build(bld):
 
 
-    hwdef_rule="%s '%s/hwdef/scripts/chibios_hwdef.py' -D '%s' --params '%s' '%s'" % (
-            bld.env.get_flat('PYTHON'),
-            bld.env.AP_HAL_ROOT,
-            bld.env.BUILDROOT,
-            bld.env.default_parameters,
-            bld.env.HWDEF)
+    hwdef_rule = f"{bld.env.get_flat('PYTHON')} '{bld.env.AP_HAL_ROOT}/hwdef/scripts/chibios_hwdef.py' -D '{bld.env.BUILDROOT}' --params '{bld.env.default_parameters}' '{bld.env.HWDEF}'"
     if bld.env.HWDEF_EXTRA:
-        hwdef_rule += " " + bld.env.HWDEF_EXTRA
+        hwdef_rule += f" {bld.env.HWDEF_EXTRA}"
     if bld.env.BOOTLOADER_OPTION:
-        hwdef_rule += " " + bld.env.BOOTLOADER_OPTION
+        hwdef_rule += f" {bld.env.BOOTLOADER_OPTION}"
     bld(
         # build hwdef.h from hwdef.dat. This is needed after a waf clean
         source=bld.path.ant_glob(bld.env.HWDEF),
@@ -649,7 +649,7 @@ def build(bld):
                 bld.bldnode.find_or_declare('ldscript.ld'),
                 bld.bldnode.find_or_declare('hw.dat')]
     )
-    
+
     bld(
         # create the file modules/ChibiOS/include_dirs
         rule="touch Makefile && BUILDDIR=${BUILDDIR_REL} BUILDROOT=${BUILDROOT} CRASHCATCHER=${CC_ROOT_REL} CHIBIOS=${CH_ROOT_REL} AP_HAL=${AP_HAL_REL} ${CHIBIOS_BUILD_FLAGS} ${CHIBIOS_BOARD_NAME} ${MAKE} pass -f '${BOARD_MK}'",
@@ -663,7 +663,7 @@ def build(bld):
         group='dynamic_sources',
         target=bld.bldnode.find_or_declare('chibios_flags.h')
     )
-    
+
     common_src = [bld.bldnode.find_or_declare('hwdef.h'),
                   bld.bldnode.find_or_declare('hw.dat'),
                   bld.bldnode.find_or_declare('ldscript.ld'),
@@ -720,4 +720,4 @@ def build(bld):
                 '_gettimeofday', '_times', '_times_r', '_gettimeofday_r', 'time', 'clock',
                 '_sbrk', '_sbrk_r', '_malloc_r', '_calloc_r', '_free_r']
     for w in wraplist:
-        bld.env.LINKFLAGS += ['-Wl,--wrap,%s' % w]
+        bld.env.LINKFLAGS += [f'-Wl,--wrap,{w}']

@@ -59,7 +59,7 @@ class TestGPSGlitch(Test):
         foundBadHDopWarn = hdopChan.max() > maxHDopWARN
         foundBadSatsFail = satsChan.min() < minSatsFAIL
         foundBadHDopFail = hdopChan.max() > maxHDopFAIL
-        satsMsg = "Min satellites: %s, Max HDop: %s" % (satsChan.min(), hdopChan.max())
+        satsMsg = f"Min satellites: {satsChan.min()}, Max HDop: {hdopChan.max()}"
         if gpsGlitchCount:
             self.result.statusMessage = "\n".join([self.result.statusMessage, satsMsg])
         if foundBadSatsFail or foundBadHDopFail:

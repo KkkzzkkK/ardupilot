@@ -124,12 +124,18 @@ class FilterTest:
         return x_space, filter.freq_response(x_space)
 
     def init_signal_plot(self, ax, Ts, Xs, Ys, Zs, Xs_filtered, Ys_filtered, Zs_filtered, label):
-        ax.plot(Ts, Xs, linewidth=1, label="{}X".format(label), alpha=0.5)
-        ax.plot(Ts, Ys, linewidth=1, label="{}Y".format(label), alpha=0.5)
-        ax.plot(Ts, Zs, linewidth=1, label="{}Z".format(label), alpha=0.5)
-        filtered_x_ax, = ax.plot(Ts, Xs_filtered, linewidth=1, label="{}X filtered".format(label), alpha=1)
-        filtered_y_ax, = ax.plot(Ts, Ys_filtered, linewidth=1, label="{}Y filtered".format(label), alpha=1)
-        filtered_z_ax, = ax.plot(Ts, Zs_filtered, linewidth=1, label="{}Z filtered".format(label), alpha=1)
+        ax.plot(Ts, Xs, linewidth=1, label=f"{label}X", alpha=0.5)
+        ax.plot(Ts, Ys, linewidth=1, label=f"{label}Y", alpha=0.5)
+        ax.plot(Ts, Zs, linewidth=1, label=f"{label}Z", alpha=0.5)
+        (filtered_x_ax,) = ax.plot(
+            Ts, Xs_filtered, linewidth=1, label=f"{label}X filtered", alpha=1
+        )
+        (filtered_y_ax,) = ax.plot(
+            Ts, Ys_filtered, linewidth=1, label=f"{label}Y filtered", alpha=1
+        )
+        (filtered_z_ax,) = ax.plot(
+            Ts, Zs_filtered, linewidth=1, label=f"{label}Z filtered", alpha=1
+        )
         ax.legend(prop={'size': 8})
         return filtered_x_ax, filtered_y_ax, filtered_z_ax
 
@@ -162,13 +168,19 @@ class FilterTest:
         _freqs_z, _times_z, _stft_z = signal.stft(Zs_filtered, sample_rate, window='hann', nperseg=self.FFT_N)
         filtered_fft_z = np.average(np.abs(_stft_z), axis=1)
 
-        ax.plot(_freqs_raw_x, raw_fft_x, alpha=0.5, linewidth=1, label="{}x FFT".format(label))
-        ax.plot(_freqs_raw_y, raw_fft_y, alpha=0.5, linewidth=1, label="{}y FFT".format(label))
-        ax.plot(_freqs_raw_z, raw_fft_z, alpha=0.5, linewidth=1, label="{}z FFT".format(label))
+        ax.plot(_freqs_raw_x, raw_fft_x, alpha=0.5, linewidth=1, label=f"{label}x FFT")
+        ax.plot(_freqs_raw_y, raw_fft_y, alpha=0.5, linewidth=1, label=f"{label}y FFT")
+        ax.plot(_freqs_raw_z, raw_fft_z, alpha=0.5, linewidth=1, label=f"{label}z FFT")
 
-        filtered_fft_ax_x, = ax.plot(_freqs_x, filtered_fft_x, label="filt. {}x FFT".format(label))
-        filtered_fft_ax_y, = ax.plot(_freqs_y, filtered_fft_y, label="filt. {}y FFT".format(label))
-        filtered_fft_ax_z, = ax.plot(_freqs_z, filtered_fft_z, label="filt. {}z FFT".format(label))
+        (filtered_fft_ax_x,) = ax.plot(
+            _freqs_x, filtered_fft_x, label=f"filt. {label}x FFT"
+        )
+        (filtered_fft_ax_y,) = ax.plot(
+            _freqs_y, filtered_fft_y, label=f"filt. {label}y FFT"
+        )
+        (filtered_fft_ax_z,) = ax.plot(
+            _freqs_z, filtered_fft_z, label=f"filt. {label}z FFT"
+        )
 
         # FFT
         # samples = len(Ts)
@@ -320,29 +332,61 @@ class FilterTest:
             filt_color = self.filter_color_map(i / num_filters)
             filt_shape, filt_cutoff = self.init_filter_shape(ax_filter, filter, filt_color)
 
-            if filt_type == BiquadFilterType.PEAK:
-                name = "Notch"
-            else:
-                name = "LPF"
-
+            name = "Notch" if filt_type == BiquadFilterType.PEAK else "LPF"
             # control for center freq is common to all filters
-            self.create_filter_control("{} freq".format(name), filter, base_rect, 500, filter.get_center_freq(),
-                                       filt_shape, filt_cutoff,
-                                       lambda val, filter=filter: filter.set_center_freq(val),
-                                       filters_key, time_list, sample_lists, signal_shapes, fft_shapes, filt_color)
+            self.create_filter_control(
+                f"{name} freq",
+                filter,
+                base_rect,
+                500,
+                filter.get_center_freq(),
+                filt_shape,
+                filt_cutoff,
+                lambda val, filter=filter: filter.set_center_freq(val),
+                filters_key,
+                time_list,
+                sample_lists,
+                signal_shapes,
+                fft_shapes,
+                filt_color,
+            )
             # move down of control height + padding
             base_rect[1] -= (base_rect[3] + padding)
 
             if filt_type == BiquadFilterType.PEAK:
-                self.create_filter_control("{} att (db)".format(name), filter, base_rect, 100, filter.get_attenuation(),
-                                           filt_shape, filt_cutoff,
-                                           lambda val, filter=filter: filter.set_attenuation(val),
-                                           filters_key, time_list, sample_lists, signal_shapes, fft_shapes, filt_color)
+                self.create_filter_control(
+                    f"{name} att (db)",
+                    filter,
+                    base_rect,
+                    100,
+                    filter.get_attenuation(),
+                    filt_shape,
+                    filt_cutoff,
+                    lambda val, filter=filter: filter.set_attenuation(val),
+                    filters_key,
+                    time_list,
+                    sample_lists,
+                    signal_shapes,
+                    fft_shapes,
+                    filt_color,
+                )
                 base_rect[1] -= (base_rect[3] + padding)
-                self.create_filter_control("{} band".format(name), filter, base_rect, 300, filter.get_bandwidth(),
-                                           filt_shape, filt_cutoff,
-                                           lambda val, filter=filter: filter.set_bandwidth(val),
-                                           filters_key, time_list, sample_lists, signal_shapes, fft_shapes, filt_color)
+                self.create_filter_control(
+                    f"{name} band",
+                    filter,
+                    base_rect,
+                    300,
+                    filter.get_bandwidth(),
+                    filt_shape,
+                    filt_cutoff,
+                    lambda val, filter=filter: filter.set_bandwidth(val),
+                    filters_key,
+                    time_list,
+                    sample_lists,
+                    signal_shapes,
+                    fft_shapes,
+                    filt_color,
+                )
                 base_rect[1] -= (base_rect[3] + padding)
 
     def create_spectrogram(self, data, name, sample_rate):
@@ -359,7 +403,7 @@ class FilterTest:
     def init_plot(self, log_name):
 
         self.fig = plt.figure(figsize=(14, 9))
-        self.fig.canvas.set_window_title("ArduPilot Filter Test Tool - {}".format(log_name))
+        self.fig.canvas.set_window_title(f"ArduPilot Filter Test Tool - {log_name}")
         self.fig.canvas.draw()
 
         rows = 2

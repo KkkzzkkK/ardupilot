@@ -13,21 +13,21 @@ _board_classes = {}
 _board = None
 
 class BoardMeta(type):
-    def __init__(cls, name, bases, dct):
-        super(BoardMeta, cls).__init__(name, bases, dct)
+    def __init__(self, name, bases, dct):
+        super(BoardMeta, self).__init__(name, bases, dct)
 
-        if 'abstract' not in cls.__dict__:
-            cls.abstract = False
-        if cls.abstract:
+        if 'abstract' not in self.__dict__:
+            self.abstract = False
+        if self.abstract:
             return
 
-        if not hasattr(cls, 'toolchain'):
-            cls.toolchain = 'native'
+        if not hasattr(self, 'toolchain'):
+            self.toolchain = 'native'
 
-        board_name = getattr(cls, 'name', name)
+        board_name = getattr(self, 'name', name)
         if board_name in _board_classes:
-            raise Exception('board named %s already exists' % board_name)
-        _board_classes[board_name] = cls
+            raise Exception(f'board named {board_name} already exists')
+        _board_classes[board_name] = self
 
 class Board:
     abstract = True
@@ -44,6 +44,7 @@ class Board:
         env = waflib.ConfigSet.ConfigSet()
         def srcpath(path):
             return cfg.srcnode.make_node(path).abspath()
+
         env.SRCROOT = srcpath('')
         self.configure_env(cfg, env)
 
@@ -158,7 +159,7 @@ class Board:
                 keys = list(val.keys())
                 if not isinstance(val, OrderedDict):
                     keys.sort()
-                val = ['%s=%s' % (vk, val[vk]) for vk in keys]
+                val = [f'{vk}={val[vk]}' for vk in keys]
 
             if k in cfg.env and isinstance(cfg.env[k], list):
                 cfg.env.prepend_value(k, val)
@@ -193,9 +194,9 @@ class Board:
         # potentially set extra defines from an environment variable:
         if cfg.options.define is not None:
             for (n, v) in [d.split("=") for d in cfg.options.define]:
-                cfg.msg("Defining: %s" % (n, ), v)
-                env.CFLAGS += ['-D%s=%s' % (n, v)]
-                env.CXXFLAGS += ['-D%s=%s' % (n, v)]
+                cfg.msg(f"Defining: {n}", v)
+                env.CFLAGS += [f'-D{n}={v}']
+                env.CXXFLAGS += [f'-D{n}={v}']
 
         env.CFLAGS += [
             '-ffunction-sections',
@@ -231,15 +232,21 @@ class Board:
                 AP_SCRIPTING_CHECKS = 1,
                 )
 
-        cfg.msg("CXX Compiler", "%s %s"  % (cfg.env.COMPILER_CXX, ".".join(cfg.env.CC_VERSION)))
+        cfg.msg(
+            "CXX Compiler",
+            f'{cfg.env.COMPILER_CXX} {".".join(cfg.env.CC_VERSION)}',
+        )
 
         if cfg.options.assert_cc_version:
-            cfg.msg("Checking compiler", "%s %s"  % (cfg.options.assert_cc_version, ".".join(cfg.env.CC_VERSION)))
-            have_version = cfg.env.COMPILER_CXX+"-"+'.'.join(list(cfg.env.CC_VERSION))
+            cfg.msg(
+                "Checking compiler",
+                f'{cfg.options.assert_cc_version} {".".join(cfg.env.CC_VERSION)}',
+            )
+            have_version = f"{cfg.env.COMPILER_CXX}-" + '.'.join(list(cfg.env.CC_VERSION))
             want_version = cfg.options.assert_cc_version
             if have_version != want_version:
-                cfg.fatal("cc version mismatch: %s should be %s" % (have_version, want_version))
-        
+                cfg.fatal(f"cc version mismatch: {have_version} should be {want_version}")
+
         if 'clang' in cfg.env.COMPILER_CC:
             env.CFLAGS += [
                 '-fcolor-diagnostics',
@@ -308,7 +315,7 @@ class Board:
 
         if cfg.options.private_key:
             env.PRIVATE_KEY = cfg.options.private_key
-            
+
         env.CXXFLAGS += [
             '-std=gnu++11',
 
@@ -459,14 +466,14 @@ class Board:
 
         if cfg.options.postype_single:
             env.CXXFLAGS += ['-DHAL_WITH_POSTYPE_DOUBLE=0']
-            
+
         if cfg.options.osd or cfg.options.osd_fonts:
             env.CXXFLAGS += ['-DOSD_ENABLED=1', '-DHAL_MSP_ENABLED=1']
 
         if cfg.options.osd_fonts:
             for f in os.listdir('libraries/AP_OSD/fonts'):
                 if fnmatch.fnmatch(f, "font*bin"):
-                    env.ROMFS_FILES += [(f,'libraries/AP_OSD/fonts/'+f)]
+                    env.ROMFS_FILES += [(f, f'libraries/AP_OSD/fonts/{f}')]
 
         if cfg.options.ekf_double:
             env.CXXFLAGS += ['-DHAL_WITH_EKF_DOUBLE=1']
@@ -492,8 +499,8 @@ class Board:
                     if fnmatch.fnmatch(f,"*~"):
                         # exclude emacs tmp files
                         continue
-                    fname = root[len(custom_dir)+1:]+"/"+f
-                    env.ROMFS_FILES += [(fname,root+"/"+f)]
+                    fname = f"{root[len(custom_dir) + 1:]}/{f}"
+                    env.ROMFS_FILES += [(fname, f"{root}/{f}")]
 
     def pre_build(self, bld):
         '''pre-build hook that gets called before dynamic sources'''
@@ -502,7 +509,9 @@ class Board:
 
     def build(self, bld):
         bld.ap_version_append_str('GIT_VERSION', bld.git_head_hash(short=True))
-        bld.ap_version_append_int('GIT_VERSION_INT', int("0x" + bld.git_head_hash(short=True), base=16))
+        bld.ap_version_append_int(
+            'GIT_VERSION_INT', int(f"0x{bld.git_head_hash(short=True)}", base=16)
+        )
         import time
         ltime = time.localtime()
         if bld.env.build_dates:
@@ -546,7 +555,7 @@ def add_dynamic_boards_esp32():
             continue
         hwdef = os.path.join(dirname, d, 'hwdef.dat')
         if os.path.exists(hwdef):
-            mcu_esp32s3 = True if (d[0:7] == "esp32s3") else False
+            mcu_esp32s3 = d[:7] == "esp32s3"
             if mcu_esp32s3:
                 newclass = type(d, (esp32s3,), {'name': d})
             else:
@@ -576,7 +585,7 @@ def get_ap_periph_boards():
                 m = re.match(r"include\s+([^\s]*)", content)
                 if m is None:
                     continue
-                include_path = os.path.join(os.path.dirname(hwdef), m.group(1))
+                include_path = os.path.join(os.path.dirname(hwdef), m[1])
                 with open(include_path, "r") as g:
                     content = g.read()
                     if 'AP_PERIPH' in content:
@@ -609,7 +618,7 @@ Please use a replacement build as follows:
 ''' % ctx.env.BOARD)
 
         boards = _board_classes.keys()
-        if not ctx.env.BOARD in boards:
+        if ctx.env.BOARD not in boards:
             ctx.fatal("Invalid board '%s': choices are %s" % (ctx.env.BOARD, ', '.join(sorted(boards, key=str.lower))))
         _board = _board_classes[ctx.env.BOARD]()
     return _board
@@ -621,10 +630,7 @@ Please use a replacement build as follows:
 class sitl(Board):
 
     def __init__(self):
-        if Utils.unversioned_sys_platform().startswith("linux"):
-            self.with_can = True
-        else:
-            self.with_can = False
+        self.with_can = bool(Utils.unversioned_sys_platform().startswith("linux"))
 
     def configure_env(self, cfg, env):
         super(sitl, self).configure_env(cfg, env)
@@ -719,11 +725,11 @@ class sitl(Board):
             env.CXXFLAGS += ['-DWITH_SITL_OSD','-DOSD_ENABLED=1']
             for f in os.listdir('libraries/AP_OSD/fonts'):
                 if fnmatch.fnmatch(f, "font*bin"):
-                    env.ROMFS_FILES += [(f,'libraries/AP_OSD/fonts/'+f)]
+                    env.ROMFS_FILES += [(f, f'libraries/AP_OSD/fonts/{f}')]
 
         for f in os.listdir('Tools/autotest/models'):
             if fnmatch.fnmatch(f, "*.json") or fnmatch.fnmatch(f, "*.parm"):
-                env.ROMFS_FILES += [('models/'+f,'Tools/autotest/models/'+f)]
+                env.ROMFS_FILES += [(f'models/{f}', f'Tools/autotest/models/{f}')]
 
         # include locations.txt so SITL on windows can lookup by name
         env.ROMFS_FILES += [('locations.txt','Tools/autotest/locations.txt')]
@@ -732,7 +738,7 @@ class sitl(Board):
         if os.path.exists('ROMFS/scripts'):
             for f in os.listdir('ROMFS/scripts'):
                 if fnmatch.fnmatch(f, "*.lua"):
-                    env.ROMFS_FILES += [('scripts/'+f,'ROMFS/scripts/'+f)]
+                    env.ROMFS_FILES += [(f'scripts/{f}', f'ROMFS/scripts/{f}')]
 
         if len(env.ROMFS_FILES) > 0:
             env.CXXFLAGS += ['-DHAL_HAVE_AP_ROMFS_EMBEDDED_H']
@@ -776,7 +782,9 @@ class sitl(Board):
                 ('11','3','0'),
             ])
 
-        werr_enabled_default = bool('g++' == cfg.env.COMPILER_CXX and cfg.env.CC_VERSION in gcc_whitelist)
+        werr_enabled_default = (
+            cfg.env.COMPILER_CXX == 'g++' and cfg.env.CC_VERSION in gcc_whitelist
+        )
 
         if werr_enabled_default or cfg.options.Werror:
             if not cfg.options.disable_Werror:
@@ -839,12 +847,13 @@ class esp32(Board):
     toolchain = 'xtensa-esp32-elf'
     def configure_env(self, cfg, env):
         def expand_path(p):
-            print("USING EXPRESSIF IDF:"+str(env.idf))
+            print(f"USING EXPRESSIF IDF:{str(env.idf)}")
             return cfg.root.find_dir(env.IDF+p).abspath()
+
         try:
-            env.IDF = os.environ['IDF_PATH'] 
+            env.IDF = os.environ['IDF_PATH']
         except:
-            env.IDF = cfg.srcnode.abspath()+"/modules/esp_idf"
+            env.IDF = f"{cfg.srcnode.abspath()}/modules/esp_idf"
 
         super(esp32, self).configure_env(cfg, env)
         cfg.load('esp32')
@@ -854,12 +863,12 @@ class esp32(Board):
         )
 
         tt = self.name[5:] #leave off 'esp32' so we just get 'buzz','diy','icarus, etc
-        
+
         # this makes sure we get the correct subtype
         env.DEFINES.update(
-            ENABLE_HEAP = 0,
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_ESP32_%s' %  tt.upper() ,
-            HAL_HAVE_HARDWARE_DOUBLE = '1',
+            ENABLE_HEAP=0,
+            CONFIG_HAL_BOARD_SUBTYPE=f'HAL_BOARD_SUBTYPE_ESP32_{tt.upper()}',
+            HAL_HAVE_HARDWARE_DOUBLE='1',
         )
 
         env.AP_LIBRARIES += [
@@ -903,8 +912,7 @@ class esp32(Board):
         '''pre-build hook that gets called before dynamic sources'''
         from waflib.Context import load_tool
         module = load_tool('esp32', [], with_sys_path=True)
-        fun = getattr(module, 'pre_build', None)
-        if fun:
+        if fun := getattr(module, 'pre_build', None):
             fun(bld)
         super(esp32, self).pre_build(bld)
 
@@ -943,7 +951,7 @@ class chibios(Board):
         ]
 
         # make board name available for USB IDs
-        env.CHIBIOS_BOARD_NAME = 'HAL_BOARD_NAME="%s"' % self.name
+        env.CHIBIOS_BOARD_NAME = f'HAL_BOARD_NAME="{self.name}"'
         env.HAL_MAX_STACK_FRAME_SIZE = 'HAL_MAX_STACK_FRAME_SIZE=%d' % 1300 # set per Wframe-larger-than, ensure its same
         env.CFLAGS += cfg.env.CPU_FLAGS + [
             '-Wlogical-op',
@@ -1024,10 +1032,10 @@ class chibios(Board):
             '-mthumb',
             '--specs=nano.specs',
             '--specs=nosys.specs',
-            '-L%s' % env.BUILDROOT,
-            '-L%s' % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
-            '-L%s' % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/common/').abspath(),
-            '-Wl,-Map,Linker.map,%s--cref,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=ldscript.ld,--defsym=__process_stack_size__=%s,--defsym=__main_stack_size__=%s' % ("--print-memory-usage," if cfg.env.EXT_FLASH_SIZE_MB > 0 and cfg.env.INT_FLASH_PRIMARY == 0 else "", cfg.env.PROCESS_STACK, cfg.env.MAIN_STACK)
+            f'-L{env.BUILDROOT}',
+            f"-L{cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath()}",
+            f"-L{cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/common/').abspath()}",
+            f'-Wl,-Map,Linker.map,{"--print-memory-usage," if cfg.env.EXT_FLASH_SIZE_MB > 0 and cfg.env.INT_FLASH_PRIMARY == 0 else ""}--cref,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=ldscript.ld,--defsym=__process_stack_size__={cfg.env.PROCESS_STACK},--defsym=__main_stack_size__={cfg.env.MAIN_STACK}',
         ]
 
         if cfg.env.DEBUG:
@@ -1043,8 +1051,10 @@ class chibios(Board):
         if cfg.env.COMPILER_CXX == "g++":
             if not self.cc_version_gte(cfg, 10, 2):
                 # require at least 10.2 compiler
-                cfg.fatal("ChibiOS build requires g++ version 10.2.1 or later, found %s" % '.'.join(cfg.env.CC_VERSION))
-            
+                cfg.fatal(
+                    f"ChibiOS build requires g++ version 10.2.1 or later, found {'.'.join(cfg.env.CC_VERSION)}"
+                )
+
         if cfg.env.ENABLE_ASSERTS:
             cfg.msg("Enabling ChibiOS asserts", "yes")
             env.CFLAGS += [ '-DHAL_CHIBIOS_ENABLE_ASSERTS' ]
@@ -1069,7 +1079,7 @@ class chibios(Board):
             env.CXXFLAGS += [ '-DHAL_CHIBIOS_ENABLE_MALLOC_GUARD' ]
         else:
             cfg.msg("Enabling malloc guard", "no")
-            
+
         if cfg.env.ENABLE_STATS:
             cfg.msg("Enabling ChibiOS thread statistics", "yes")
             env.CFLAGS += [ '-DHAL_ENABLE_THREAD_STATISTICS' ]
@@ -1151,8 +1161,7 @@ class chibios(Board):
         '''pre-build hook that gets called before dynamic sources'''
         from waflib.Context import load_tool
         module = load_tool('chibios', [], with_sys_path=True)
-        fun = getattr(module, 'pre_build', None)
-        if fun:
+        if fun := getattr(module, 'pre_build', None):
             fun(bld)
         super(chibios, self).pre_build(bld)
 
@@ -1161,10 +1170,7 @@ class chibios(Board):
 
 class linux(Board):
     def __init__(self):
-        if self.toolchain == 'native':
-            self.with_can = True
-        else:
-            self.with_can = False
+        self.with_can = self.toolchain == 'native'
 
     def configure_env(self, cfg, env):
         if cfg.options.board == 'linux':
@@ -1219,7 +1225,7 @@ class linux(Board):
             cfg.define('HAL_NUM_CAN_IFACES', 2)
             cfg.define('HAL_CANFD_SUPPORTED', 1)
             cfg.define('CANARD_ENABLE_CANFD', 1)
-        
+
         if self.with_can:
             env.DEFINES.update(CANARD_MULTI_IFACE=1,
                                CANARD_IFACE_ALL = 0x3)
@@ -1227,7 +1233,9 @@ class linux(Board):
         if cfg.options.apstatedir:
             cfg.define('AP_STATEDIR', cfg.options.apstatedir)
 
-        defaults_file = 'libraries/AP_HAL_Linux/boards/%s/defaults.parm' % self.get_name()
+        defaults_file = (
+            f'libraries/AP_HAL_Linux/boards/{self.get_name()}/defaults.parm'
+        )
         if os.path.exists(defaults_file):
             env.ROMFS_FILES += [('defaults.parm', defaults_file)]
             env.DEFINES.update(

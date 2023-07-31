@@ -73,10 +73,9 @@ pitchDeg = 0
 pitchMax = None
 rollMax = None
 
-if True:
-    pitchRate = 1
-    pitchMax = 45
-    rollMax = 45
+pitchRate = 1
+pitchMax = 45
+rollMax = 45
 
 while True:
 

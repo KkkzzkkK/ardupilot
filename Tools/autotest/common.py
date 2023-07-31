@@ -269,7 +269,7 @@ class Telem(object):
         self.progress_log = ""
 
     def progress(self, message):
-        message = "%s: %s" % (self.progress_tag(), message)
+        message = f"{self.progress_tag()}: {message}"
         if self.progress_function is not None:
             self.progress_function(message)
             return
@@ -294,7 +294,7 @@ class Telem(object):
             self.connected = True
             self.progress("Connected")
         except IOError as e:
-            self.progress("Failed to connect: %s" % str(e))
+            self.progress(f"Failed to connect: {str(e)}")
             time.sleep(0.5)
             return False
         return True
@@ -304,7 +304,7 @@ class Telem(object):
             data = self.port.recv(1024)
         except socket.error as e:
             if e.errno not in [errno.EAGAIN, errno.EWOULDBLOCK]:
-                self.progress("Exception: %s" % str(e))
+                self.progress(f"Exception: {str(e)}")
                 self.connected = False
             return bytes()
         if len(data) == 0:
@@ -320,7 +320,7 @@ class Telem(object):
         except socket.error as e:
             if e.errno in [errno.EAGAIN, errno.EWOULDBLOCK]:
                 return 0
-            self.progress("Exception: %s" % str(e))
+            self.progress(f"Exception: {str(e)}")
             raise
         if written != len(some_bytes):
             raise ValueError("Short write")
@@ -350,7 +350,7 @@ class MSP_Generic(Telem):
         self.state = self.STATE_IDLE
 
     def progress(self, message):
-        print("MSP: %s" % message)
+        print(f"MSP: {message}")
 
     def set_state(self, state):
         # self.progress("Moving to state (%s)" % state)
@@ -367,7 +367,7 @@ class MSP_Generic(Telem):
         if self.callback is not None:
             self.callback(cmd, data)
         else:
-            print("cmd=%s" % str(cmd))
+            print(f"cmd={str(cmd)}")
 
     def update_read(self):
         for byte in self.do_read():
@@ -545,19 +545,15 @@ class LTM(Telem):
         frame_length = self.frame_lengths[frame_type]
         # check frame CRC
         crc = 0
-        count = 0
-        for c in self.buffer[3:frame_length-1]:
+        for count, c in enumerate(self.buffer[3:frame_length-1]):
             if sys.version_info.major < 3:
                 c = ord(c)
             crc ^= c
-            count += 1
         buffer_crc = self.buffer[frame_length-1]
         if sys.version_info.major < 3:
             buffer_crc = ord(buffer_crc)
         if crc != buffer_crc:
-            raise NotAchievedException("Invalid checksum on frame type %s" % str(chr(frame_type)))
-#        self.progress("Received valid %s frame" % str(chr(frame_type)))
-
+            raise NotAchievedException(f"Invalid checksum on frame type {chr(frame_type)}")
         class Frame(object):
             def __init__(self, buffer):
                 self.buffer = buffer
@@ -576,8 +572,6 @@ class LTM(Telem):
             def int16(self, offset):
                 t = struct.unpack("<h", self.buffer[offset:offset+2])
                 return t[0]
-#                return self.intn(offset, 2)
-
         class FrameG(Frame):
             def __init__(self, buffer):
                 super(FrameG, self,).__init__(buffer)
@@ -627,11 +621,11 @@ class LTM(Telem):
                 super(FrameS, self,).__init__(buffer)
 
         if frame_type == self.FRAME_G:
-            frame = FrameG(self.buffer[0:frame_length-1])
+            frame = FrameG(self.buffer[:frame_length-1])
         elif frame_type == self.FRAME_A:
-            frame = FrameA(self.buffer[0:frame_length-1])
+            frame = FrameA(self.buffer[:frame_length-1])
         elif frame_type == self.FRAME_S:
-            frame = FrameS(self.buffer[0:frame_length-1])
+            frame = FrameS(self.buffer[:frame_length-1])
         else:
             raise NotAchievedException("Bad frame?!?!?!")
         self.buffer = self.buffer[frame_length:]
@@ -755,7 +749,7 @@ class DEVO(Telem):
             def volt(self):
                 return self.int16(17)
 
-        self.frame = FRAME(self.buffer[0:self.frame_length-1])
+        self.frame = FRAME(self.buffer[:self.frame_length-1])
         self.buffer = self.buffer[self.frame_length:]
 
     def update_read(self):
@@ -832,10 +826,7 @@ class FRSkyD(FRSky):
             if len(self.buffer) == 0:
                 break
             consume = 1
-            if sys.version_info.major >= 3:
-                b = self.buffer[0]
-            else:
-                b = ord(self.buffer[0])
+            b = self.buffer[0] if sys.version_info.major >= 3 else ord(self.buffer[0])
             if self.state == self.state_WANT_START_STOP_D:
                 if b != self.START_STOP_D:
                     # we may come into a stream mid-way, so we can't judge
@@ -982,7 +973,7 @@ class MAVliteMessage(object):
         seq = 0
         sequenced = bytearray()
         while len(all_bytes):
-            chunk = all_bytes[0:5]
+            chunk = all_bytes[:5]
             all_bytes = all_bytes[5:]
             sequenced.append(seq)
             sequenced.extend(chunk)
@@ -997,7 +988,7 @@ class MAVliteMessage(object):
         sequenced.append(checksum)
 
         while len(sequenced):
-            chunk = sequenced[0:6]
+            chunk = sequenced[:6]
             sequenced = sequenced[6:]
             chunk.extend([0] * (6-len(chunk))) # pad to 6
             packet = SPortUplinkPacket(
@@ -1018,7 +1009,7 @@ class SPortToMAVlite(object):
         self.reset()
 
     def progress(self, message):
-        print("SPortToMAVLite: %s" % message)
+        print(f"SPortToMAVLite: {message}")
 
     def reset(self):
         self.want_seq = 0
@@ -1171,7 +1162,7 @@ class FRSkySPort(FRSky):
         return "FRSkySPort"
 
     def handle_data_downlink(self, some_bytes):
-        self.progress("DOWNLINK %s" % (str(some_bytes),))
+        self.progress(f"DOWNLINK {str(some_bytes)}")
         if self.data_downlink_handler is not None:
             self.data_downlink_handler(some_bytes)
         self.last_data_time = self.get_time()
@@ -1195,20 +1186,14 @@ class FRSkySPort(FRSky):
             self.progress("(0x%x): %u" % (sensor_id, self.sensor_id_poll_counts[sensor_id]))
 
     def read_bytestuffed_byte(self):
-        if sys.version_info.major >= 3:
-            b = self.buffer[0]
-        else:
-            b = ord(self.buffer[0])
+        b = self.buffer[0] if sys.version_info.major >= 3 else ord(self.buffer[0])
         if b == 0x7D:
             # byte-stuffed
             if len(self.buffer) < 2:
                 self.consume = 0
                 return None
             self.consume = 2
-            if sys.version_info.major >= 3:
-                b2 = self.buffer[1]
-            else:
-                b2 = ord(self.buffer[1])
+            b2 = self.buffer[1] if sys.version_info.major >= 3 else ord(self.buffer[1])
             if b2 == 0x5E:
                 return self.START_STOP_SPORT
             if b2 == 0x5D:
@@ -1244,7 +1229,9 @@ class FRSkySPort(FRSky):
                        (self.last_poll_sensor, self.state))
                 self.progress(msg)
             if self.state != self.state_WANT_FRAME_TYPE:
-                raise ValueError("Expected to be wanting a frame type when repolling (state=%s)" % str(self.state))
+                raise ValueError(
+                    f"Expected to be wanting a frame type when repolling (state={str(self.state)})"
+                )
             self.state = self.state_SEND_POLL
 
         if self.state == self.state_SEND_POLL:
@@ -1344,12 +1331,9 @@ class FRSkySPort(FRSky):
             if len(self.buffer) == 0:
                 break
             self.consume = 1
-            if sys.version_info.major >= 3:
-                b = self.buffer[0]
-            else:
-                b = ord(self.buffer[0])
 #            self.progress("Have (%s) bytes state=%s b=0x%02x" % (str(len(self.buffer)), str(self.state), b));
             if self.state == self.state_WANT_FRAME_TYPE:
+                b = self.buffer[0] if sys.version_info.major >= 3 else ord(self.buffer[0])
                 if b in [self.SPORT_DATA_FRAME, self.SPORT_DOWNLINK_FRAME]:
                     self.frame = b
                     self.crc = 0
@@ -1359,8 +1343,6 @@ class FRSkySPort(FRSky):
                 # we may come into a stream mid-way, so we can't judge
                 self.progress("############# Bad char %x" % b)
                 raise ValueError("Bad char (0x%02x)" % b)
-                self.bad_chars += 1
-                continue
             elif self.state == self.state_WANT_ID1:
                 self.id1 = self.read_bytestuffed_byte()
                 if self.id1 is None:
@@ -1395,26 +1377,23 @@ class FRSkySPort(FRSky):
                 dataid = (self.id2 << 8) | self.id1
                 if self.crc != crc:
                     self.progress("Incorrect frsky checksum (received=%02x calculated=%02x id=0x%x)" % (crc, self.crc, dataid))
-#                    raise ValueError("Incorrect frsky checksum (want=%02x got=%02x id=0x%x)" % (crc, self.crc, dataid))
+                elif self.frame == self.SPORT_DOWNLINK_FRAME:
+                    self.handle_data_downlink([
+                        self.id1,
+                        self.id2,
+                        self.data_bytes[0],
+                        self.data_bytes[1],
+                        self.data_bytes[2],
+                        self.data_bytes[3]]
+                    )
                 else:
-                    if self.frame == self.SPORT_DOWNLINK_FRAME:
-                        self.handle_data_downlink([
-                            self.id1,
-                            self.id2,
-                            self.data_bytes[0],
-                            self.data_bytes[1],
-                            self.data_bytes[2],
-                            self.data_bytes[3]]
-                        )
-                    else:
-                        self.handle_data(dataid, self.data)
+                    self.handle_data(dataid, self.data)
                 self.state = self.state_SEND_POLL
             elif self.state == self.state_SEND_POLL:
                 # this is done in check_poll
                 self.progress("in send_poll state")
-                pass
             else:
-                raise ValueError("Unknown state (%s)" % self.state)
+                raise ValueError(f"Unknown state ({self.state})")
 
     def get_data(self, dataid):
         try:
@@ -1449,7 +1428,7 @@ class Test(object):
         self.name = function.__name__
         self.description = function.__doc__
         if self.description is None:
-            raise ValueError("%s is missing a docstring" % self.name)
+            raise ValueError(f"{self.name} is missing a docstring")
         self.function = function
         self.attempts = attempts
         self.speedup = speedup
@@ -1465,15 +1444,15 @@ class Result(object):
         # self.passed = False
 
     def __str__(self):
-        ret = "  %s (%s)" % (self.test.name, self.test.description)
+        ret = f"  {self.test.name} ({self.test.description})"
         if self.passed:
-            return ret + " OK"
+            return f"{ret} OK"
         if self.reason is not None:
-            ret += " (" + self.reason + ")"
+            ret += f" ({self.reason})"
         if self.exception is not None:
-            ret += " (" + str(self.exception) + ")"
+            ret += f" ({str(self.exception)})"
         if self.debug_filename is not None:
-            ret += " (see " + self.debug_filename + ")"
+            ret += f" (see {self.debug_filename})"
 
         return ret
 

@@ -71,7 +71,7 @@ class AutoTestCopter(AutoTest):
         return 100
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduCopter_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduCopter_Tests/{name}/"
 
     def sitl_start_location(self):
         return SITL_START_LOCATION
@@ -383,8 +383,7 @@ class AutoTestCopter(AutoTest):
         self.set_rc(3, 1200)
         time_left = timeout - (self.get_sim_time() - tstart)
         self.progress("timeleft = %u" % time_left)
-        if time_left < 20:
-            time_left = 20
+        time_left = max(time_left, 20)
         self.wait_altitude(-10, 10, timeout=time_left, relative=True)
         self.set_rc(3, 1500)
         self.save_wp()
@@ -423,19 +422,21 @@ class AutoTestCopter(AutoTest):
             home = ""
             alt_valid = alt <= 1
             distance_valid = home_distance < distance_max
-            if check_alt:
-                if alt_valid and distance_valid:
-                    home = "HOME"
-            else:
-                if distance_valid:
-                    home = "HOME"
+            if (
+                check_alt
+                and alt_valid
+                and distance_valid
+                or not check_alt
+                and distance_valid
+            ):
+                home = "HOME"
             if not quiet:
                 self.progress("Alt: %.02f  HomeDist: %.02f %s" %
                               (alt, home_distance, home))
 
             # our post-condition is that we are disarmed:
             if not self.armed():
-                if home == "":
+                if not home:
                     raise NotAchievedException("Did not get home")
                 # success!
                 return
@@ -738,9 +739,10 @@ class AutoTestCopter(AutoTest):
             if m.get_type() != "HEARTBEAT":
                 return
             # can't use mode_is here because we're in the message hook
-            print("Mode: %s" % self.mav.flightmode)
+            print(f"Mode: {self.mav.flightmode}")
             if self.mav.flightmode != "SMART_RTL":
                 raise NotAchievedException("Not in SMART_RTL")
+
         self.install_message_hook_context(ensure_smartrtl)
 
         self.set_heartbeat_rate(self.speedup)
@@ -1125,7 +1127,7 @@ class AutoTestCopter(AutoTest):
 
     def test_takeoff_check_mode(self, mode, user_takeoff=False):
         # stabilize check
-        self.progress("Motor takeoff check in %s" % mode)
+        self.progress(f"Motor takeoff check in {mode}")
         self.change_mode(mode)
         self.zero_throttle()
         self.wait_ready_to_arm()
@@ -1193,7 +1195,9 @@ class AutoTestCopter(AutoTest):
         '''wait for EKF's accel bias to reach a level and maintain it'''
 
         if verbose:
-            self.progress("current onboard log filepath: %s" % self.current_onboard_log_filepath())
+            self.progress(
+                f"current onboard log filepath: {self.current_onboard_log_filepath()}"
+            )
         dfreader = self.dfreader_for_current_onboard_log()
 
         achieve_start = None
@@ -1207,7 +1211,7 @@ class AutoTestCopter(AutoTest):
                 if m.TimeUS < dfreader_start_timestamp:
                     continue
             if verbose:
-                print("m=%s" % str(m))
+                print(f"m={str(m)}")
             current_value = getattr(m, field)
 
             if abs(current_value - level) > tolerance:
@@ -1364,7 +1368,7 @@ class AutoTestCopter(AutoTest):
             if m is None:
                 continue
             if m.get_type() in ["STATUSTEXT", "COMMAND_ACK"]:
-                print("Got: %s" % str(m))
+                print(f"Got: {str(m)}")
             if self.mav.motors_armed():
                 self.progress("Armed")
                 return
@@ -1408,7 +1412,7 @@ class AutoTestCopter(AutoTest):
                 break
             # make sure we don't RTL:
             if not self.mode_is(using_mode):
-                raise NotAchievedException("Changed mode away from %s" % using_mode)
+                raise NotAchievedException(f"Changed mode away from {using_mode}")
             distance = self.distance_to_home(use_cached_home=True)
             inner_radius = fence_radius - fence_margin
             want_min = inner_radius - 1 # allow 1m either way
@@ -1423,9 +1427,9 @@ class AutoTestCopter(AutoTest):
                 if failed_max is False:
                     self.progress("Failed max")
                     failed_max = True
-        if failed_min and failed_max:
-            raise NotAchievedException("Failed both min and max checks.  Clever")
         if failed_min:
+            if failed_max:
+                raise NotAchievedException("Failed both min and max checks.  Clever")
             raise NotAchievedException("Failed min")
         if failed_max:
             raise NotAchievedException("Failed max")
@@ -2261,15 +2265,15 @@ class AutoTestCopter(AutoTest):
                     # move right
                     self.set_rc(1, 1800)
                     self.set_rc(2, 1500)
-                if veh_dir == 1:
+                elif veh_dir == 1:
                     # move left
                     self.set_rc(1, 1200)
                     self.set_rc(2, 1500)
-                if veh_dir == 2:
+                elif veh_dir == 2:
                     # move forward
                     self.set_rc(1, 1500)
                     self.set_rc(2, 1200)
-                if veh_dir == 3:
+                elif veh_dir == 3:
                     # move back
                     self.set_rc(1, 1500)
                     self.set_rc(2, 1800)
