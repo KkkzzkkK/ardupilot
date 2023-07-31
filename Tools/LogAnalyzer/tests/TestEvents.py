@@ -25,7 +25,7 @@ class TestEvents(Test):
                 eCode = logdata.channels["ERR"]["ECode"].listData[i][1]
                 if subSys == 2 and (eCode == 1):
                     errors.add("PPM")
-                elif subSys == 3 and (eCode == 1 or eCode == 2):
+                elif subSys == 3 and eCode in [1, 2]:
                     errors.add("COMPASS")
                 elif subSys == 5 and (eCode == 1):
                     errors.add("FS_THR")
@@ -35,7 +35,7 @@ class TestEvents(Test):
                     errors.add("GPS")
                 elif subSys == 8 and (eCode == 1):
                     errors.add("GCS")
-                elif subSys == 9 and (eCode == 1 or eCode == 2):
+                elif subSys == 9 and eCode in [1, 2]:
                     errors.add("FENCE")
                 elif subSys == 10:
                     errors.add("FLT_MODE")

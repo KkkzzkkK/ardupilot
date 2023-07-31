@@ -83,13 +83,15 @@ class update_submodule(Task.Task):
             path = line[1:].split()[1]
             if prefix == ' ':
                 continue
-            if prefix == '-':
+            if prefix == '+' and not self.is_fast_forward(path):
+                self.non_fast_forward.append(path)
+            elif (
+                prefix == '+'
+                and self.is_fast_forward(path)
+                or prefix != '+'
+                and prefix == '-'
+            ):
                 r = Task.RUN_ME
-            if prefix == '+':
-                if not self.is_fast_forward(path):
-                    self.non_fast_forward.append(path)
-                else:
-                    r = Task.RUN_ME
 
         if self.non_fast_forward:
             r = Task.SKIP_ME
@@ -108,7 +110,7 @@ class update_submodule(Task.Task):
         return self.uid_
 
     def __str__(self):
-        return 'Submodule update: %s' % self.submodule
+        return f'Submodule update: {self.submodule}'
 
 def configure(cfg):
     cfg.find_program('git')
@@ -150,7 +152,7 @@ def _post_fun(bld):
     for name, t in _submodules_tasks.items():
         if not t.non_fast_forward:
             continue
-        Logs.warn("Submodule %s not updated: non-fastforward" % name)
+        Logs.warn(f"Submodule {name} not updated: non-fastforward")
 
 @conf
 def git_submodule_post_fun(bld):

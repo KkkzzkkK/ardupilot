@@ -56,18 +56,18 @@ class CheckReplayBranch(object):
                 if not seen_log_disarmed:
                     return False
                 break
-            if m.Name == "LOG_REPLAY":
-                if seen_log_replay:
-                    return False
-                if m.Value != 1:
-                    return False
-                seen_log_replay = True
             if m.Name == "LOG_DISARMED":
                 if seen_log_disarmed:
                     return False
                 seen_log_disarmed = True
                 if m.Value != 1:
                     return False
+            elif m.Name == "LOG_REPLAY":
+                if seen_log_replay:
+                    return False
+                if m.Value != 1:
+                    return False
+                seen_log_replay = True
         return False
 
     def is_replay_log(self, logfile_path):
@@ -89,7 +89,7 @@ class CheckReplayBranch(object):
         return False
 
     def progress(self, message):
-        print("CRB: %s" % message)
+        print(f"CRB: {message}")
 
     def build_replay(self):
         subprocess.check_call(["./waf", "replay"])
@@ -119,7 +119,7 @@ class CheckReplayBranch(object):
         '''find logs which were replayed in the autotest'''
         replayed_logs = set()
         for logfile_path in self.get_logs():
-            self.progress("  Checking %s" % logfile_path)
+            self.progress(f"  Checking {logfile_path}")
             dfreader =  DFReader.DFReader_binary(logfile_path, zero_time_base=True);
             while True:
                 m = dfreader.recv_match(type='MSG')
@@ -128,7 +128,7 @@ class CheckReplayBranch(object):
                 match = re.match(".*Running replay on \(([^)]+)\).*", m.Message)
                 if match is None:
                     continue
-                replayed_logs.add(match.group(1))
+                replayed_logs.add(match[1])
         return sorted(list(replayed_logs))
 
     def run(self):
@@ -137,9 +137,9 @@ class CheckReplayBranch(object):
         self.assert_tree_clean()
 
         os.chdir(self.topdir)
-        self.progress("chdir (%s)" % str(self.topdir))
+        self.progress(f"chdir ({str(self.topdir)})")
 
-        self.progress("Running autotest Replay on %s" % self.master)
+        self.progress(f"Running autotest Replay on {self.master}")
         self.run_autotest_replay_on_master()
 
         self.progress("Building Replay")
@@ -153,7 +153,7 @@ class CheckReplayBranch(object):
         if len(replay_logs) == 0:
             raise ValueError("Found no Replay logs")
         for log in replay_logs:
-            self.progress("Running Replay on (%s)" % log)
+            self.progress(f"Running Replay on ({log})")
             old_logs = self.get_logs()
             self.run_replay_on_log(log)
             new_logs = self.get_logs()
@@ -161,13 +161,13 @@ class CheckReplayBranch(object):
             if len(delta) != 1:
                 raise ValueError("Expected a single new log")
             new_log = delta[0]
-            self.progress("Running check_replay.py on Replay output log: %s" % new_log)
+            self.progress(f"Running check_replay.py on Replay output log: {new_log}")
 
             # run check_replay across Replay log
             if check_replay.check_log(new_log, verbose=True):
-                self.progress("check_replay.py of (%s): OK" % new_log)
+                self.progress(f"check_replay.py of ({new_log}): OK")
             else:
-                self.progress("check_replay.py of (%s): FAILED" % new_log)
+                self.progress(f"check_replay.py of ({new_log}): FAILED")
                 success = False
         if success:
             self.progress("All OK")

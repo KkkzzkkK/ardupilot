@@ -7,6 +7,7 @@ AP_FLAKE8_CLEAN
 
 """
 
+
 import os
 import re
 import sys
@@ -28,14 +29,18 @@ includefiles = {
 if len(args) > 0:
     vehicle = args[0]
     if vehicle not in includefiles:
-        print("Unknown vehicle (%s) (be in a vehicle directory or supply a vehicle type as an argument)" % (vehicle,))
+        print(
+            f"Unknown vehicle ({vehicle}) (be in a vehicle directory or supply a vehicle type as an argument)"
+        )
         sys.exit(1)
-    includefilepath = "%s/%s" % (vehicle, includefiles[vehicle])
+    includefilepath = f"{vehicle}/{includefiles[vehicle]}"
 else:
     # assume we are in e.g. APM/Rover/
     vehicle = os.path.basename(os.getcwd())
     if vehicle not in includefiles:
-        print("Unknown vehicle (%s) (be in a vehicle directory or supply a vehicle type as an argument)" % (vehicle,))
+        print(
+            f"Unknown vehicle ({vehicle}) (be in a vehicle directory or supply a vehicle type as an argument)"
+        )
         sys.exit(1)
     includefilepath = includefiles[vehicle]
 
@@ -50,9 +55,16 @@ for line in file:
         continue
     match = firmware_version_extract_regex.match(line)
     if not match:
-        print("Failed to match FIRMWARE_VERSION line (%s)" % (line,))
+        print(f"Failed to match FIRMWARE_VERSION line ({line})")
         sys.exit(1)
-    print("%d.%d.%d-%s" % (int(match.group("major")),
-                           int(match.group("minor")),
-                           int(match.group("point")),
-                           match.group("type")))
+    print(
+        (
+            "%d.%d.%d-%s"
+            % (
+                int(match["major"]),
+                int(match["minor"]),
+                int(match["point"]),
+                match["type"],
+            )
+        )
+    )

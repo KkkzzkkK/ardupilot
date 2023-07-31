@@ -112,12 +112,12 @@ class Bisect(object):
 
     def progress(self, string):
         '''pretty-print progress'''
-        print("BH: %s" % string)
+        print(f"BH: {string}")
 
     def run_program(self, prefix, cmd_list):
         '''copied in from build_binaries.py'''
         '''run cmd_list, spewing and setting output in self'''
-        self.progress("Running (%s)" % " ".join(cmd_list))
+        self.progress(f'Running ({" ".join(cmd_list)})')
         p = subprocess.Popen(cmd_list,
                              stdin=None,
                              close_fds=True,
@@ -137,11 +137,10 @@ class Bisect(object):
                 x = x.decode('utf-8')
             self.program_output += x
             x = x.rstrip()
-            print("%s: %s" % (prefix, x))
+            print(f"{prefix}: {x}")
         (pid, status) = waitpid_result
         if status != 0:
-            self.progress("Process failed (%s)" %
-                          str(waitpid_result))
+            self.progress(f"Process failed ({str(waitpid_result)})")
             raise subprocess.CalledProcessError(
                 status, cmd_list)
 
@@ -238,8 +237,8 @@ class BisectCITest(Bisect):
         cmd = [self.autotest_script()]
         if self.opts.autotest_valgrind:
             cmd.append("--debug")
-        cmd.append("build.%s" % self.opts.autotest_vehicle)
-        print("build cmd: %s" % str(cmd))
+        cmd.append(f"build.{self.opts.autotest_vehicle}")
+        print(f"build cmd: {cmd}")
 
         try:
             self.run_program("Run autotest (build)", cmd)
@@ -250,7 +249,7 @@ class BisectCITest(Bisect):
         cmd = [self.autotest_script()]
         if self.opts.autotest_valgrind:
             cmd.append("--valgrind")
-        cmd.append("test.%s.%s" % (self.opts.autotest_vehicle, self.opts.autotest_test))
+        cmd.append(f"test.{self.opts.autotest_vehicle}.{self.opts.autotest_test}")
 
         code = self.exit_pass_code()
         for i in range(0, self.opts.autotest_test_passes):
@@ -262,14 +261,15 @@ class BisectCITest(Bisect):
             except subprocess.CalledProcessError:
                 for ignore_string in self.opts.autotest_failure_ignore_string:
                     if ignore_string in self.program_output:
-                        self.progress("Found ignore string (%s) in program output" % ignore_string)
+                        self.progress(f"Found ignore string ({ignore_string}) in program output")
                         ignore = True
                 if not ignore and self.opts.autotest_failure_require_string is not None:
                     if self.opts.autotest_failure_require_string not in self.program_output:
                         # it failed, but not for the reason we're looking
                         # for...
-                        self.progress("Did not find test failure string (%s); skipping" %
-                                      self.opts.autotest_failure_require_string)
+                        self.progress(
+                            f"Did not find test failure string ({self.opts.autotest_failure_require_string}); skipping"
+                        )
                         code = self.exit_skip_code()
                         break
                 if not ignore:
@@ -377,6 +377,6 @@ if __name__ == '__main__':
 try:
     bisecter.run()
 except Exception as e:
-    print("Caught exception in bisect-helper: %s" % str(e))
+    print(f"Caught exception in bisect-helper: {str(e)}")
     print(get_exception_stacktrace(e))
     sys.exit(129)  # should abort the bisect process

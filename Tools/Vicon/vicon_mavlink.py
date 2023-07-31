@@ -55,7 +55,7 @@ last_origin_send = 0
 def connect_to_vicon(ip):
     '''connect to a vicon with given ip or hostname'''
     global vicon
-    print("Opening connection to %s" % ip)
+    print(f"Opening connection to {ip}")
     vicon.connect(ip)
     print("Configuring vicon")
     vicon.set_stream_mode(pyvicon.StreamMode.ClientPull)
@@ -70,17 +70,17 @@ def connect_to_vicon(ip):
         name = vicon.get_subject_name(0)
         if name is not None:
             break
-    print("Connected to subject %s" % name)
+    print(f"Connected to subject {name}")
 
 def get_gps_time(tnow):
     '''return gps_week and gps_week_ms for current time'''
     leapseconds = 18
     SEC_PER_WEEK = 7 * 86400
     MSEC_PER_WEEK = SEC_PER_WEEK * 1000
-    
+
     epoch = 86400*(10*365 + (1980-1969)/4 + 1 + 6 - 2) - leapseconds
     epoch_seconds = int(tnow - epoch)
-    week = int(epoch_seconds) // SEC_PER_WEEK
+    week = epoch_seconds // SEC_PER_WEEK
     t_ms = int(tnow * 1000) % 1000
     week_ms = (epoch_seconds % SEC_PER_WEEK) * 1000 + ((t_ms//200) * 200)
     return week, week_ms
@@ -174,10 +174,7 @@ def main_loop():
 
             gps_week, gps_week_ms = get_gps_time(now)
 
-            if args.gps_nsats >= 6:
-                fix_type = 3
-            else:
-                fix_type = 1
+            fix_type = 3 if args.gps_nsats >= 6 else 1
             mav.mav.gps_input_send(time_us, 0, 0, gps_week_ms, gps_week, fix_type,
                                    int(gps_lat*1.0e7), int(gps_lon*1.0e7), gps_alt,
                                    1.0, 1.0,

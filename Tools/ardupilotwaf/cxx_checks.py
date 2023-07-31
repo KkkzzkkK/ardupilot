@@ -198,11 +198,13 @@ def check_package(cfg, env, libname):
         cfg.env.revert()
         return False
 
-    if not cfg.check(compiler='cxx',
-            fragment='''int main() { return 0; }''',
-            msg='Checking link with %s' % libname,
-            mandatory=False,
-            use=capsname):
+    if not cfg.check(
+        compiler='cxx',
+        fragment='''int main() { return 0; }''',
+        msg=f'Checking link with {libname}',
+        mandatory=False,
+        use=capsname,
+    ):
         cfg.env.revert()
         return False
 
@@ -210,10 +212,10 @@ def check_package(cfg, env, libname):
 
     # Add to global environment:
     # we always want to use the library for all targets
-    env.LIB += cfg.env['LIB_%s' % capsname]
-    env.INCLUDES += cfg.env['INCLUDES_%s' % capsname]
-    env.CFLAGS += cfg.env['CFLAGS_%s' % capsname]
-    env.LIBPATH += cfg.env['LIBPATH_%s' % capsname]
+    env.LIB += cfg.env[f'LIB_{capsname}']
+    env.INCLUDES += cfg.env[f'INCLUDES_{capsname}']
+    env.CFLAGS += cfg.env[f'CFLAGS_{capsname}']
+    env.LIBPATH += cfg.env[f'LIBPATH_{capsname}']
 
     return True
 

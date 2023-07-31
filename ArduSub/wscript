@@ -4,9 +4,10 @@
 def build(bld):
     vehicle = bld.path.name
     bld.ap_stlib(
-        name=vehicle + '_libs',
+        name=f'{vehicle}_libs',
         ap_vehicle=vehicle,
-        ap_libraries=bld.ap_common_vehicle_libraries() + [
+        ap_libraries=bld.ap_common_vehicle_libraries()
+        + [
             'AC_AttitudeControl',
             'AC_WPNav',
             'AP_Camera',
@@ -25,5 +26,5 @@ def build(bld):
     bld.ap_program(
         program_name='ardusub',
         program_groups=['bin', 'sub'],
-        use=vehicle + '_libs',
+        use=f'{vehicle}_libs',
     )

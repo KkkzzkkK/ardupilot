@@ -14,9 +14,10 @@ def build(bld):
     vehicle = bld.path.name
 
     bld.ap_stlib(
-        name=vehicle + '_libs',
+        name=f'{vehicle}_libs',
         ap_vehicle=vehicle,
-        ap_libraries=bld.ap_common_vehicle_libraries() + [
+        ap_libraries=bld.ap_common_vehicle_libraries()
+        + [
             'AP_Beacon',
             'AP_Arming',
             'AP_RCMapper',
@@ -25,7 +26,4 @@ def build(bld):
         ],
     )
 
-    bld.ap_program(
-        program_groups=['tool','replay'],
-        use=vehicle + '_libs',
-    )
+    bld.ap_program(program_groups=['tool','replay'], use=f'{vehicle}_libs')

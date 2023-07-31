@@ -56,8 +56,7 @@ class AutoTestHelicopter(AutoTestCopter):
 
     def get_collective_out(self):
         servo = self.mav.recv_match(type='SERVO_OUTPUT_RAW', blocking=True)
-        chan_pwm = (servo.servo1_raw + servo.servo2_raw + servo.servo3_raw)/3.0
-        return chan_pwm
+        return (servo.servo1_raw + servo.servo2_raw + servo.servo3_raw)/3.0
 
     def RotorRunup(self):
         '''Test rotor runip'''
@@ -178,13 +177,14 @@ class AutoTestHelicopter(AutoTestCopter):
         known_broken_frames = {
         }
         for frame in sorted(vinfo_options["frames"].keys()):
-            self.start_subtest("Testing frame (%s)" % str(frame))
+            self.start_subtest(f"Testing frame ({str(frame)})")
             if frame in known_broken_frames:
-                self.progress("Actually, no I'm not - it is known-broken (%s)" %
-                              (known_broken_frames[frame]))
+                self.progress(
+                    f"Actually, no I'm not - it is known-broken ({known_broken_frames[frame]})"
+                )
                 continue
             frame_bits = vinfo_options["frames"][frame]
-            print("frame_bits: %s" % str(frame_bits))
+            print(f"frame_bits: {str(frame_bits)}")
             if frame_bits.get("external", False):
                 self.progress("Actually, no I'm not - it is an external simulation")
                 continue
@@ -549,11 +549,8 @@ class AutoTestHelicopter(AutoTestCopter):
             copy.copy(wp5_by_three),
             self.mission_item_rtl(target_system=target_system, target_component=target_component),
         ])
-        # renumber the items:
-        count = 0
-        for item in ret:
+        for count, item in enumerate(ret):
             item.seq = count
-            count += 1
         return ret
 
     def scurve_nasty_up_mission(self, target_system=1, target_component=1):
@@ -626,11 +623,8 @@ class AutoTestHelicopter(AutoTestCopter):
             wp7,
             self.mission_item_rtl(target_system=target_system, target_component=target_component),
         ])
-        # renumber the items:
-        count = 0
-        for item in ret:
+        for count, item in enumerate(ret):
             item.seq = count
-            count += 1
         return ret
 
     def fly_mission_points(self, points):
@@ -680,8 +674,7 @@ class AutoTestHelicopter(AutoTestCopter):
 
         # set the start location to CMAC to use same test script as other vehicles
         self.sitl_start_loc = mavutil.location(-35.362881, 149.165222, 582.000000, 90.0)   # CMAC
-        self.customise_SITL_commandline(["--home", "%s,%s,%s,%s"
-                                         % (-35.362881, 149.165222, 582.000000, 90.0)])
+        self.customise_SITL_commandline(["--home", '-35.362881,149.165222,582.0,90.0'])
 
         # insert listener to compare airspeeds:
         airspeed = [None, None]

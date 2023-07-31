@@ -67,15 +67,8 @@ class TestParams(Test):
                     self.__checkParamIsLessThan("THR_MID", 701, logdata)
                     self.__checkParamIsMoreThan("THR_MID", 299, logdata)
                 # TODO: add more parameter tests, these are just an example...
-            elif logdata.vehicleType == VehicleType.Plane:
-                # TODO: add parameter checks for plane...
-                pass
-            elif logdata.vehicleType == VehicleType.Rover:
-                # TODO: add parameter checks for rover...
-                pass
-
             if self.result.status == TestResult.StatusType.FAIL:
                 self.result.statusMessage = "Bad parameters found:\n" + self.result.statusMessage
         except KeyError as e:
             self.result.status = TestResult.StatusType.FAIL
-            self.result.statusMessage = str(e) + ' not found'
+            self.result.statusMessage = f'{str(e)} not found'

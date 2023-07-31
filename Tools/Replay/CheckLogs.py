@@ -18,7 +18,7 @@ def run_cmd(cmd, dir=".", show=False, output=False, checkfail=True):
     '''run a shell command'''
     from subprocess import call, check_call,Popen, PIPE
     if show:
-        print("Running: '%s' in '%s'" % (cmd, dir))
+        print(f"Running: '{cmd}' in '{dir}'")
     if output:
         return Popen([cmd], shell=True, stdout=PIPE, cwd=dir).communicate()[0]
     elif checkfail:
@@ -28,7 +28,7 @@ def run_cmd(cmd, dir=".", show=False, output=False, checkfail=True):
 
 def run_replay(logfile):
     '''run Replay on one logfile'''
-    print("Processing %s" % logfile)
+    print(f"Processing {logfile}")
     cmd = "./Replay.elf -- --check %s --tolerance-euler=%f --tolerance-pos=%f --tolerance-vel=%f " % (
         logfile,
         opts.tolerance_euler,
@@ -42,8 +42,8 @@ def get_log_list():
     pattern = os.path.join(opts.logdir, "*-checked.bin")
     file_list = glob.glob(pattern)
     print("Found %u logs to processs" % len(file_list))
-    if len(file_list) == 0:
-        print("No logs to process matching %s" % pattern)
+    if not file_list:
+        print(f"No logs to process matching {pattern}")
         sys.exit(1)
     return file_list
 
@@ -162,28 +162,25 @@ def create_checked_logs():
     else:
         pattern = os.path.join(opts.logdir, "*.bin")
         full_file_list = glob.glob(pattern)
-    file_list = []
-    for f in full_file_list:
-        if not f.endswith("-checked.bin"):
-            file_list.append(f)
-    if len(file_list) == 0:
+    file_list = [f for f in full_file_list if not f.endswith("-checked.bin")]
+    if not file_list:
         print("No files to process")
         sys.exit(1)
     for f in file_list:
-        print("Processing %s" % f)
+        print(f"Processing {f}")
         log_list_current = set(glob.glob("logs/*.BIN"))
-        cmd = "./Replay.elf -- --check-generate %s" % f
+        cmd = f"./Replay.elf -- --check-generate {f}"
         run_cmd(cmd, checkfail=True)
         log_list_after = set(glob.glob("logs/*.BIN"))
         changed = log_list_after.difference(log_list_current)
         if len(changed) != 1:
-            print("Failed to generate log for %s" % f)
+            print(f"Failed to generate log for {f}")
             sys.exit(1)
         outlog = list(changed)[0]
         name, ext = os.path.splitext(f)
-        newname = name + '-checked.bin'
+        newname = f'{name}-checked.bin'
         os.rename(outlog, newname)
-        print("Created %s" % newname)
+        print(f"Created {newname}")
 
 if opts.create_checked_logs:
     create_checked_logs()

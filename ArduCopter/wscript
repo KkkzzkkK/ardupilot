@@ -4,9 +4,10 @@
 def build(bld):
     vehicle = bld.path.name
     bld.ap_stlib(
-        name=vehicle + '_libs',
+        name=f'{vehicle}_libs',
         ap_vehicle=vehicle,
-        ap_libraries=bld.ap_common_vehicle_libraries() + [
+        ap_libraries=bld.ap_common_vehicle_libraries()
+        + [
             'AC_AttitudeControl',
             'AC_InputManager',
             'AC_PrecLand',
@@ -37,13 +38,13 @@ def build(bld):
     bld.ap_program(
         program_name='arducopter',
         program_groups=['bin', 'copter'],
-        use=vehicle + '_libs',
+        use=f'{vehicle}_libs',
         defines=['FRAME_CONFIG=MULTICOPTER_FRAME'],
-        )
+    )
 
     bld.ap_program(
         program_name='arducopter-heli',
         program_groups=['bin', 'heli'],
-        use=vehicle + '_libs',
+        use=f'{vehicle}_libs',
         defines=['FRAME_CONFIG=HELI_FRAME'],
-        )
+    )

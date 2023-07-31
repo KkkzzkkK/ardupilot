@@ -71,7 +71,7 @@ class TestSuite(object):
         # dynamically load in Test subclasses from the 'tests' folder
         # to prevent one being loaded, move it out of that folder, or set that test's .enable attribute to False
         dirName = os.path.dirname(os.path.abspath(__file__))
-        testScripts = glob.glob(dirName + '/tests/*.py')
+        testScripts = glob.glob(f'{dirName}/tests/*.py')
 
         def getTests(module_path):
             import inspect
@@ -120,17 +120,21 @@ class TestSuite(object):
 
     def outputPlainText(self, outputStats):
         '''output test results in plain text'''
-        print('Dataflash log analysis report for file: ' + self.logfile)
+        print(f'Dataflash log analysis report for file: {self.logfile}')
         print('Log size: %.2fmb (%d lines)' % (self.logdata.filesizeKB / 1024.0, self.logdata.lineCount))
         print('Log duration: %s' % str(datetime.timedelta(seconds=self.logdata.durationSecs)) + '\n')
 
         if self.logdata.vehicleType == VehicleType.Copter and self.logdata.getCopterType():
-            print('Vehicle Type: %s (%s)' % (self.logdata.vehicleTypeString, self.logdata.getCopterType()))
+            print(
+                f'Vehicle Type: {self.logdata.vehicleTypeString} ({self.logdata.getCopterType()})'
+            )
         else:
-            print('Vehicle Type: %s' % self.logdata.vehicleTypeString)
-        print('Firmware Version: %s (%s)' % (self.logdata.firmwareVersion, self.logdata.firmwareHash))
-        print('Hardware: %s' % self.logdata.hardwareType)
-        print('Free RAM: %s' % self.logdata.freeRAM)
+            print(f'Vehicle Type: {self.logdata.vehicleTypeString}')
+        print(
+            f'Firmware Version: {self.logdata.firmwareVersion} ({self.logdata.firmwareHash})'
+        )
+        print(f'Hardware: {self.logdata.hardwareType}')
+        print(f'Free RAM: {self.logdata.freeRAM}')
         if self.logdata.skippedLines:
             print("\nWARNING: %d malformed log lines skipped during read" % self.logdata.skippedLines)
         print('\n')
@@ -172,30 +176,51 @@ class TestSuite(object):
         # open the file for writing
         xml = None
         try:
-            if xmlFile == '-':
-                xml = sys.stdout
-            else:
-                xml = open(xmlFile, 'w')
+            xml = sys.stdout if xmlFile == '-' else open(xmlFile, 'w')
         except IOError:
-            sys.stderr.write("Error opening output xml file: %s" % xmlFile)
+            sys.stderr.write(f"Error opening output xml file: {xmlFile}")
             sys.exit(1)
 
         # output header info
         xml.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         xml.write("<loganalysis>\n")
         xml.write("<header>\n")
-        xml.write("  <logfile>" + escape(self.logfile) + "</logfile>\n")
-        xml.write("  <sizekb>" + escape(repr(self.logdata.filesizeKB)) + "</sizekb>\n")
-        xml.write("  <sizelines>" + escape(repr(self.logdata.lineCount)) + "</sizelines>\n")
-        xml.write("  <duration>" + escape(str(datetime.timedelta(seconds=self.logdata.durationSecs))) + "</duration>\n")
-        xml.write("  <vehicletype>" + escape(self.logdata.vehicleTypeString) + "</vehicletype>\n")
+        xml.write(f"  <logfile>{escape(self.logfile)}" + "</logfile>\n")
+        xml.write(f"  <sizekb>{escape(repr(self.logdata.filesizeKB))}" + "</sizekb>\n")
+        xml.write(
+            f"  <sizelines>{escape(repr(self.logdata.lineCount))}"
+            + "</sizelines>\n"
+        )
+        xml.write(
+            f"  <duration>{escape(str(datetime.timedelta(seconds=self.logdata.durationSecs)))}"
+            + "</duration>\n"
+        )
+        xml.write(
+            f"  <vehicletype>{escape(self.logdata.vehicleTypeString)}"
+            + "</vehicletype>\n"
+        )
         if self.logdata.vehicleType == VehicleType.Copter and self.logdata.getCopterType():
-            xml.write("  <coptertype>" + escape(self.logdata.getCopterType()) + "</coptertype>\n")
-        xml.write("  <firmwareversion>" + escape(self.logdata.firmwareVersion) + "</firmwareversion>\n")
-        xml.write("  <firmwarehash>" + escape(self.logdata.firmwareHash) + "</firmwarehash>\n")
-        xml.write("  <hardwaretype>" + escape(self.logdata.hardwareType) + "</hardwaretype>\n")
-        xml.write("  <freemem>" + escape(repr(self.logdata.freeRAM)) + "</freemem>\n")
-        xml.write("  <skippedlines>" + escape(repr(self.logdata.skippedLines)) + "</skippedlines>\n")
+            xml.write(
+                f"  <coptertype>{escape(self.logdata.getCopterType())}"
+                + "</coptertype>\n"
+            )
+        xml.write(
+            f"  <firmwareversion>{escape(self.logdata.firmwareVersion)}"
+            + "</firmwareversion>\n"
+        )
+        xml.write(
+            f"  <firmwarehash>{escape(self.logdata.firmwareHash)}"
+            + "</firmwarehash>\n"
+        )
+        xml.write(
+            f"  <hardwaretype>{escape(self.logdata.hardwareType)}"
+            + "</hardwaretype>\n"
+        )
+        xml.write(f"  <freemem>{escape(repr(self.logdata.freeRAM))}" + "</freemem>\n")
+        xml.write(
+            f"  <skippedlines>{escape(repr(self.logdata.skippedLines))}"
+            + "</skippedlines>\n"
+        )
         xml.write("</header>\n")
 
         # output parameters
@@ -211,26 +236,26 @@ class TestSuite(object):
                 continue
             xml.write("  <result>\n")
             if test.result.status == TestResult.StatusType.GOOD:
-                xml.write("    <name>" + escape(test.name) + "</name>\n")
+                xml.write(f"    <name>{escape(test.name)}" + "</name>\n")
                 xml.write("    <status>GOOD</status>\n")
-                xml.write("    <message>" + escape(test.result.statusMessage) + "</message>\n")
+                xml.write(f"    <message>{escape(test.result.statusMessage)}" + "</message>\n")
             elif test.result.status == TestResult.StatusType.FAIL:
-                xml.write("    <name>" + escape(test.name) + "</name>\n")
+                xml.write(f"    <name>{escape(test.name)}" + "</name>\n")
                 xml.write("    <status>FAIL</status>\n")
-                xml.write("    <message>" + escape(test.result.statusMessage) + "</message>\n")
+                xml.write(f"    <message>{escape(test.result.statusMessage)}" + "</message>\n")
                 xml.write("    <data>(test data will be embedded here at some point)</data>\n")
             elif test.result.status == TestResult.StatusType.WARN:
-                xml.write("    <name>" + escape(test.name) + "</name>\n")
+                xml.write(f"    <name>{escape(test.name)}" + "</name>\n")
                 xml.write("    <status>WARN</status>\n")
-                xml.write("    <message>" + escape(test.result.statusMessage) + "</message>\n")
+                xml.write(f"    <message>{escape(test.result.statusMessage)}" + "</message>\n")
                 xml.write("    <data>(test data will be embedded here at some point)</data>\n")
             elif test.result.status == TestResult.StatusType.NA:
-                xml.write("    <name>" + escape(test.name) + "</name>\n")
+                xml.write(f"    <name>{escape(test.name)}" + "</name>\n")
                 xml.write("    <status>NA</status>\n")
             else:
-                xml.write("    <name>" + escape(test.name) + "</name>\n")
+                xml.write(f"    <name>{escape(test.name)}" + "</name>\n")
                 xml.write("    <status>UNKNOWN</status>\n")
-                xml.write("    <message>" + escape(test.result.statusMessage) + "</message>\n")
+                xml.write(f"    <message>{escape(test.result.statusMessage)}" + "</message>\n")
             xml.write("  </result>\n")
         xml.write("</results>\n")
 
@@ -287,9 +312,8 @@ def main():
 
     # check for empty log if requested
     if args.empty:
-        emptyErr = DataflashLog.DataflashLogHelper.isLogEmpty(logdata)
-        if emptyErr:
-            sys.stderr.write("Empty log file: %s, %s" % (logdata.filename, emptyErr))
+        if emptyErr := DataflashLog.DataflashLogHelper.isLogEmpty(logdata):
+            sys.stderr.write(f"Empty log file: {logdata.filename}, {emptyErr}")
             sys.exit(1)
 
     # run the tests, and gather timings

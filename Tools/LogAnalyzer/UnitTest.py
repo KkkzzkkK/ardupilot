@@ -400,5 +400,5 @@ try:
     print("All unit/regression tests GOOD\n")
 
 except Exception:
-    print("Error found: " + traceback.format_exc())
+    print(f"Error found: {traceback.format_exc()}")
     print("UNIT TEST FAILED\n")

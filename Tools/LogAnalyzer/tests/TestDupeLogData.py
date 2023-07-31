@@ -16,11 +16,7 @@ class TestDupeLogData(Test):
     def __matchSample(self, sample, sampleStartIndex, logdata):
         '''return the line number where a match is found, otherwise return False'''
 
-        # ignore if all data in sample is the same value
-        nSame = 0
-        for s in sample:
-            if s[1] == sample[0][1]:
-                nSame += 1
+        nSame = sum(1 for s in sample if s[1] == sample[0][1])
         if nSame == 20:
             return False
 
@@ -48,20 +44,15 @@ class TestDupeLogData(Test):
             self.result.statusMessage = "No ATT log data"
             return
 
-        # pick 10 sample points within the range of ATT data we have
-        sampleStartIndices = []
         attEndIndex = len(logdata.channels["ATT"]["Pitch"].listData) - 1
         step = int(attEndIndex / 11)
-        for i in range(step, attEndIndex - step, step):
-            sampleStartIndices.append(i)
-
+        sampleStartIndices = list(range(step, attEndIndex - step, step))
         # get 20 datapoints of pitch from each sample location and check for a match elsewhere
         sampleIndex = 0
         for i in range(sampleStartIndices[0], len(logdata.channels["ATT"]["Pitch"].listData)):
             if i == sampleStartIndices[sampleIndex]:
                 sample = logdata.channels["ATT"]["Pitch"].listData[i : i + 20]
-                matchedLine = self.__matchSample(sample, i, logdata)
-                if matchedLine:
+                if matchedLine := self.__matchSample(sample, i, logdata):
                     self.result.status = TestResult.StatusType.FAIL
                     self.result.statusMessage = "Duplicate data chunks found in log (%d and %d)" % (
                         sample[0][0],

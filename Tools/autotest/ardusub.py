@@ -65,7 +65,7 @@ class AutoTestSub(AutoTest):
         return os.path.realpath(__file__)
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduSub_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduSub_Tests/{name}/"
 
     def default_mode(self):
         return 'MANUAL'
@@ -112,10 +112,7 @@ class AutoTestSub(AutoTest):
         msg = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True, timeout=5)
         if msg is None:
             raise NotAchievedException("Did not get GLOBAL_POSITION_INT")
-        pwm = 1300
-        if msg.relative_alt/1000.0 < -6.0:
-            # need to g`o up, not down!
-            pwm = 1700
+        pwm = 1700 if msg.relative_alt < -6.0 * 1000.0 else 1300
         self.set_rc(Joystick.Throttle, pwm)
         self.wait_altitude(altitude_min=-6, altitude_max=-5)
         self.set_rc(Joystick.Throttle, 1500)
@@ -198,8 +195,7 @@ class AutoTestSub(AutoTest):
         final_altitude = self.mav.recv_match(type='VFR_HUD', blocking=True).alt
         if abs(previous_altitude - final_altitude) > delta:
             raise NotAchievedException(
-                "Changing modes affected depth with no throttle input!, started at {}, ended at {}"
-                .format(previous_altitude, final_altitude)
+                f"Changing modes affected depth with no throttle input!, started at {previous_altitude}, ended at {final_altitude}"
             )
 
     def PositionHold(self):
@@ -226,7 +222,9 @@ class AutoTestSub(AutoTest):
         self.delay_sim_time(10)
         distance_m = self.get_distance(start_pos, self.mav.location())
         if distance_m > 1:
-            raise NotAchievedException("Position Hold was unable to keep position in calm waters within 1 meter after 10 seconds, drifted {} meters".format(distance_m))  # noqa
+            raise NotAchievedException(
+                f"Position Hold was unable to keep position in calm waters within 1 meter after 10 seconds, drifted {distance_m} meters"
+            )
 
         # Hold in 1 m/s current
         self.progress("Testing position hold in current")
@@ -235,7 +233,9 @@ class AutoTestSub(AutoTest):
         self.delay_sim_time(10)
         distance_m = self.get_distance(start_pos, self.mav.location())
         if distance_m > 1:
-            raise NotAchievedException("Position Hold was unable to keep position in 1m/s current within 1 meter after 10 seconds, drifted {} meters".format(distance_m))  # noqa
+            raise NotAchievedException(
+                f"Position Hold was unable to keep position in 1m/s current within 1 meter after 10 seconds, drifted {distance_m} meters"
+            )
 
         # Move forward slowly in 1 m/s current
         start_pos = self.mav.location()
@@ -245,7 +245,9 @@ class AutoTestSub(AutoTest):
         distance_m = self.get_distance(start_pos, self.mav.location())
         bearing = self.get_bearing(start_pos, self.mav.location())
         if distance_m < 2 or (bearing > 30 and bearing < 330):
-            raise NotAchievedException("Position Hold was unable to move north 2 meters, moved {} at {} degrees instead".format(distance_m, bearing))  # noqa
+            raise NotAchievedException(
+                f"Position Hold was unable to move north 2 meters, moved {distance_m} at {bearing} degrees instead"
+            )
         self.disarm_vehicle()
 
     def MotorThrustHoverParameterIgnore(self):
@@ -254,7 +256,9 @@ class AutoTestSub(AutoTest):
         # Test default parameter value
         mot_thst_hover_value = self.get_parameter("MOT_THST_HOVER")
         if mot_thst_hover_value != 0.5:
-            raise NotAchievedException("Unexpected default MOT_THST_HOVER parameter value {}".format(mot_thst_hover_value))
+            raise NotAchievedException(
+                f"Unexpected default MOT_THST_HOVER parameter value {mot_thst_hover_value}"
+            )
 
         # Test if parameter is being ignored
         for value in [0.25, 0.75]:
@@ -294,13 +298,13 @@ class AutoTestSub(AutoTest):
 
         # Note this temperature matches the output of the Atmospheric Model for Air currently
         # And should be within 1 deg C of 40 degC
-        if (m.temperature < 3900) or (4100 < m.temperature):
+        if m.temperature < 3900 or m.temperature > 4100:
             raise NotAchievedException("Did not get correct TSYS01 temperature: Got %f" % m.temperature)
 
     def DiveMission(self):
         '''Dive mission'''
         filename = "sub_mission.txt"
-        self.progress("Executing mission %s" % filename)
+        self.progress(f"Executing mission {filename}")
         self.load_mission(filename)
         self.set_rc_default()
 
@@ -397,7 +401,7 @@ class AutoTestSub(AutoTest):
                                            timeout=1)
             except ConnectionResetError:
                 pass
-            self.progress("Battery: %s" % str(batt))
+            self.progress(f"Battery: {str(batt)}")
             if batt is None:
                 continue
             if batt.battery_remaining > 50:

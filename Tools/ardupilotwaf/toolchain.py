@@ -27,7 +27,7 @@ import sys
 def find_gxx(conf):
     names = ['g++', 'c++']
     if conf.env.TOOLCHAIN != 'native':
-        names = ['%s-%s' % (conf.env.TOOLCHAIN, n) for n in names]
+        names = [f'{conf.env.TOOLCHAIN}-{n}' for n in names]
     cxx = conf.find_program(names, var='CXX')
     conf.get_cc_version(cxx, gcc=True)
     conf.env.CXX_NAME = 'gcc'
@@ -36,7 +36,7 @@ def find_gxx(conf):
 def find_gcc(conf):
     names = ['gcc', 'cc']
     if conf.env.TOOLCHAIN != 'native':
-        names = ['%s-%s' % (conf.env.TOOLCHAIN, n) for n in names]
+        names = [f'{conf.env.TOOLCHAIN}-{n}' for n in names]
     cc = conf.find_program(names, var='CC')
     conf.get_cc_version(cc, gcc=True)
     conf.env.CC_NAME = 'gcc'
@@ -45,10 +45,10 @@ def _clang_cross_support(cfg):
     if _clang_cross_support.called:
         return
 
-    prefix = cfg.env.TOOLCHAIN + '-'
+    prefix = f'{cfg.env.TOOLCHAIN}-'
 
     try:
-        cfg.find_program(prefix + 'gcc', var='CROSS_GCC')
+        cfg.find_program(f'{prefix}gcc', var='CROSS_GCC')
     except Errors.ConfigurationError as e:
         cfg.fatal('toolchain: clang: couldn\'t find cross GCC', ex=e)
 
@@ -57,11 +57,7 @@ def _clang_cross_support(cfg):
         # avoid OS's environment to mess up toolchain path finding
         del environ['TOOLCHAIN_CROSS_AR']
     try:
-        cfg.find_program(
-            prefix + 'ar',
-            var='TOOLCHAIN_CROSS_AR',
-            environ=environ,
-        )
+        cfg.find_program(f'{prefix}ar', var='TOOLCHAIN_CROSS_AR', environ=environ)
     except Errors.ConfigurationError as e:
         cfg.fatal('toolchain: clang: couldn\'t find toolchain path', ex=e)
 
@@ -75,10 +71,10 @@ def _clang_cross_support(cfg):
     ).strip()
 
     cfg.env.CLANG_FLAGS = [
-        '--target=' + cfg.env.TOOLCHAIN,
-        '--gcc-toolchain=' + toolchain_path,
-        '--sysroot=' + sysroot,
-        '-B' + os.path.join(toolchain_path, 'bin')
+        f'--target={cfg.env.TOOLCHAIN}',
+        f'--gcc-toolchain={toolchain_path}',
+        f'--sysroot={sysroot}',
+        '-B' + os.path.join(toolchain_path, 'bin'),
     ]
 
 _clang_cross_support.called = False
@@ -119,9 +115,9 @@ def _set_pkgconfig_crosscompilation_wrapper(cfg):
 
     @conf
     def new_validate_cfg(kw):
-        if not 'path' in kw:
+        if 'path' not in kw:
             if not cfg.env.PKGCONFIG:
-                cfg.find_program('%s-pkg-config' % cfg.env.TOOLCHAIN, var='PKGCONFIG')
+                cfg.find_program(f'{cfg.env.TOOLCHAIN}-pkg-config', var='PKGCONFIG')
             kw['path'] = cfg.env.PKGCONFIG
 
         original_validatecfg(kw)
@@ -147,7 +143,7 @@ def configure(cfg):
         # on cygwin arm-none-eabi-ar doesn't support the @FILE syntax for splitting long lines
         cfg.find_program('ar', var='AR', quiet=True)
     else:
-        cfg.find_program('%s-ar' % cfg.env.TOOLCHAIN, var='AR', quiet=True)
+        cfg.find_program(f'{cfg.env.TOOLCHAIN}-ar', var='AR', quiet=True)
     cfg.load('compiler_cxx compiler_c')
 
     if not cfg.options.disable_gccdeps:

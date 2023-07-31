@@ -55,7 +55,7 @@ class TestAutotune(Test):
             return AUTOTUNE_REACHED_LIMIT in [i for _, i in self.events]
 
         def __repr__(self):
-            return "<AutotuneSession {}-{}>".format(self.linestart, self.linestop)
+            return f"<AutotuneSession {self.linestart}-{self.linestop}>"
 
     def __init__(self):
         Test.__init__(self)

@@ -47,7 +47,7 @@ class AutoTestTracker(AutoTest):
         return "tracker"
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "AntennaTracker_Tests/" + name + "/"
+        self.current_test_name_directory = f"AntennaTracker_Tests/{name}/"
 
     def apply_defaultfile_parameters(self):
         # tracker doesn't have a default parameters file
@@ -119,9 +119,9 @@ class AutoTestTracker(AutoTest):
     def SERVOTEST(self):
         '''Test SERVOTEST mode'''
         self.change_mode(0) # "MANUAL"
+        channel = 1
         # magically changes to SERVOTEST (3)
         for value in 1900, 1200:
-            channel = 1
             self.run_cmd(
                 mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
                 p1=channel,
@@ -129,8 +129,8 @@ class AutoTestTracker(AutoTest):
                 timeout=1,
             )
             self.wait_servo_channel_value(channel, value)
+        channel = 2
         for value in 1300, 1670:
-            channel = 2
             self.run_cmd(
                 mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
                 p1=channel,
